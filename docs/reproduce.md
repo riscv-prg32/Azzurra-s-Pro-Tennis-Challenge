@@ -2,7 +2,7 @@
 
 This page lets anyone:
 
-* **Reproduce** release 2.0.0: rebuild the same files from this repository,
+* **Reproduce** release 2.1.0: rebuild the same files from this repository,
   and check them against the published checksums.
 * **Replicate** it: rebuild the cartridge from its generators and sources,
   on another machine, and get a working cartridge even where the bytes differ.
@@ -11,14 +11,17 @@ Everything that the build uses is in this repository or in the PRG32
 repository, except four tools: the RISC-V compiler, QEMU, Python with Pillow,
 and ffmpeg.
 
-## 1. The environment used for 2.0.0
+## 1. The environment used for 2.1.0
 
 | Component | Version used | Needed for |
 |-----------|--------------|------------|
-| This repository | the commit tagged/merged as 2.0.0 | everything |
+| This repository | the commit tagged/merged as 2.1.0 | everything |
 | [PRG32](https://github.com/riscv-prg32/PRG32) | `1fa8474427bb3998a79d2b350550efdb2578b3be` (2026-11-04), checked out next to this repository as `../PRG32` | cartridge ABI, build tool, Store tool, audio packer, QEMU firmware, firmware font |
 | RISC-V compiler | `riscv32-esp-elf-gcc` 14.2.0, crosstool-NG `esp-14.2.0_20241119` (ESP-IDF 5.4 tools, in `~/.espressif/tools/riscv32-esp-elf/`) | cartridges |
 | ESP-IDF | v5.4 | building PRG32's QEMU firmware |
+| [PRG32 Multiplayer Server](https://github.com/riscv-prg32/PRG32-Multiplayer-Server) | 1.0.0, `6349b4bda14388ca35ca8da72dcc59d49ad23422` (2026-11-05) with LAN discovery added (`9d1e6d5` on the branch `feat/lan-discovery`), next to this repository as `../PRG32-Multiplayer-Server`, with its `npm install` done | online tests in QEMU and on the board |
+| Node.js | 26.12.0 | the Multiplayer Server |
+| Python `websockets` | 17.1 | the online test's observer |
 | QEMU | Espressif `qemu-system-riscv32` 9.0.0 (`esp_develop_9.0.0_20240606`, in `~/.espressif/tools/qemu-riscv32/`) | screenshots, audio, preview |
 | Python | 3.12.10 | generators, tools |
 | Pillow | 13.0.0 | art generators, screenshots |
@@ -28,12 +31,18 @@ and ffmpeg.
 
 Notes:
 
-* The PRG32 checkout had one local change, to `dependencies.lock` (ESP-IDF
-  component versions for the firmware). It does not affect the cartridge
-  build.
-* The QEMU firmware was built from that checkout with
-  `python3 -m prg32 qemu build`, which writes `build-qemu/qemu_flash.bin`,
-  `qemu_efuse.bin` and `PRG32.elf`.
+* The PRG32 checkout had two local changes: `dependencies.lock` (ESP-IDF
+  component versions for the firmware), and LAN discovery in the firmware's
+  multiplayer client, committed afterwards as `3a6a9e3` on the branch
+  `feat/multiplayer-lan-discovery`. Neither affects the cartridge build.
+* The QEMU firmware was built from that checkout, in ESP-IDF's environment
+  (`. ~/esp-idf/export.sh`), with `python3 -m prg32 qemu build`, which
+  regenerates `build-qemu/sdkconfig` and writes `build-qemu/qemu_flash.bin`,
+  `qemu_efuse.bin` and `PRG32.elf`. It was configured with multiplayer on
+  and the server URL `ws://192.168.1.155:8081`
+  (`CONFIG_PRG32_MULTIPLAYER_SERVER_URL` in `build-qemu/sdkconfig`). The
+  online test reads that address and redirects it, so the address itself
+  does not matter.
 
 ## 2. Get the sources
 
@@ -127,8 +136,9 @@ Running the build twice gives byte-identical packages.
 tests/run_tests.sh shots
 ```
 
-The tests should end with `core: 99 checks, ok`, then `ok (0 failures)`,
-then `metadata: version 2.0.0, 0 failures`. See [testing.md](testing.md).
+The tests should end with `core: 622 checks, ok`, then `ok (0 failures)`
+twice (the game, then the online tests), then
+`metadata: version 2.1.0, 0 failures`. See [testing.md](testing.md).
 
 ### Step 4: the Store bundle
 
@@ -136,19 +146,19 @@ then `metadata: version 2.0.0, 0 failures`. See [testing.md](testing.md).
 scripts/pack-store-bundle.sh
 ```
 
-This writes `dist/azzurra-pro-tennis-2.0.0-store.zip`. It validates the
+This writes `dist/azzurra-pro-tennis-2.1.0-store.zip`. It validates the
 bundle with the CartridgeStore's ingestion code when `../CartridgeStore` is
 present, and prints `READY for submission (store-ingest)`. The ZIP's
 timestamps are pinned to the release date, so it is byte-reproducible too.
 
-### Checksums of release 2.0.0
+### Checksums of release 2.1.0
 
 These are the checksums in `dist/SHA256SUMS`:
 
 ```
-3c63644ca35284ea7baa9f0c5e7c8ed63555c69785a342804ff9fcbe35a18484  azzurra-pro-tennis-esp32c6.prg32
-00b806fd36acea983801e68966a1e8e5eeb6deac45999352bf899486d27c7a9e  azzurra-pro-tennis-qemu.prg32
-b2afb3b210df4bdc4c3edcd64defd7a44f378a9efcdc244dc10711b3fc24bd3a  azzurra-pro-tennis-2.0.0-store.zip
+be3cba0b928e9ea1f7ce8cf8d1a61806a0bae3a665936a0a715c1dc7e8bb622e  azzurra-pro-tennis-esp32c6.prg32
+464870f5c9eb4151bb91c797a80c4ef484c9e541fbba50d68fd0778f7b07a7f5  azzurra-pro-tennis-qemu.prg32
+c8b5a18d5b0b36a8a4155a62366b92c44a8b8280016ab7f389ce2b24c69a5055  azzurra-pro-tennis-2.1.0-store.zip
 ```
 
 Two things make the packages' checksums depend on more than the source:
@@ -164,7 +174,7 @@ checksums, but not the code: `code=` and `mem=` stay the same.
 |-----------------|---------|
 | `assets/store/icon.png` | `d378e05d66861bea379775c3eee7971aa1762ddde867d0e02e35cf5bb51ea67d` |
 | `assets/store/screenshot.png` | `60844fee42205d687ad69a8b60fae2acdedd69fcbc95cdfe8694de855e576a47` |
-| `assets/store/preview.mp4` | `f167fb54809db0b87c75f857a53753d02f9681b80f989fd0741c6363a55abe6b` |
+| `assets/store/preview.mp4` | `d2abe8c2449fec79a78a44337013afe35e6419dea40b4c635e748c3d7c90dc2e` |
 
 ## 4. QEMU: screenshots and stereo audio
 
@@ -198,6 +208,63 @@ Outputs:
 * **Saved files** in `build/qemu-smoke/`: `title.png`, `menu.png`,
   `intro.png`, `serve.png`, `rally*.png`, `pause.png`, `audio.wav`
   (2 channels) and `console.log`.
+
+## 4b. QEMU: online matches
+
+```bash
+scripts/qemu_netplay.py --match 1v1 --teams 0,1 --out build/qemu-netplay-1v1
+scripts/qemu_netplay.py --match 2v2 --teams 0,1,0,1 --out build/qemu-netplay-2v2
+```
+
+The script:
+
+1. starts the Multiplayer Server (`node src/server.js`) on a local port, with
+   its data in `OUT/server-data`;
+2. joins the room `azzurra-tennis:v2` itself, as a silent observer that
+   records every relayed message to `OUT/observer.jsonl`;
+3. starts one QEMU console per `--teams` entry, each with its own copy of
+   the flash and its NVS erased, so that each has its own device identity.
+   Each console's network is QEMU's user network, with a `guestfwd` rule
+   that sends the firmware's server address to the local server;
+4. on each console: boots the cartridge, walks the title menu to PLAY ONLINE
+   (each key is checked on the screen and repeated if it was lost), sets the
+   team and READY in the lobby, then plays random moves until the result
+   screen;
+5. writes `OUT/report.json`: each console's events and result (won or lost,
+   read from the result screen's colours), and, per console, what the server
+   relayed: the snapshot rate, the game speed and whether any two snapshots
+   ever disagreed about an input.
+
+`--audio` paces each firmware on audio credits, as `qemu_preview.py` does.
+It is off by default. With credits, two or four consoles each ran at about
+5 frames per second; without them, at 30 (both observed, from the frame
+counter that the server relays). The cause is most likely the script's credit
+threads, not the cartridge, but this has not been confirmed.
+
+**With the ESP32-C6 board.** The board joins as one more console. Its
+firmware needs LAN discovery (PRG32 with the change described in PRG32's
+`docs/software/multiplayer_protocol.md`, "LAN Discovery"), or a server URL
+compiled in that reaches this computer. Run the server on the LAN with
+discovery on, from `../PRG32-Multiplayer-Server`:
+
+```bash
+HOST=0.0.0.0 PORT=8081 DATA_DIR=$PWD/../Azzurra-s-Pro-Tennis-Challenge/build/lan-server node src/server.js
+```
+
+Then, with the cartridge already in the board's slot `cart4` (the script
+uploads nothing):
+
+```bash
+scripts/qemu_netplay.py --match 1v1 --teams 0 --external-server --port 8081 --board-port /dev/cu.usbmodem101 --board-url http://BOARD_IP --board-slot cart4 --board-team 1 --out build/qemu-netplay-board
+```
+
+The script restarts the cartridge on the board (`prg32 esp32c6 run`), walks
+its menus with `prg32 esp32c6 key`, and starts the QEMU consoles only once the
+board is READY. During the match it presses no key in the lobby and reads the
+board's screen only a few times: each screenshot slows the board, and in
+lockstep every console with it. The match end is seen when the board's
+relayed tick stops; the result is then read from the board's screen. The
+QEMU consoles reach the LAN server through the same `guestfwd` rule as above.
 
 ## 5. The 60-second preview
 
@@ -243,12 +310,12 @@ Every frame and every sample in the preview comes from the QEMU firmware
 running the cartridge; nothing is drawn or mixed afterwards.
 
 QEMU's timing relative to the host varies from run to run, so a new
-recording shows a different match. For 2.0.0 the result screen, round won 1-0
-by Azzurra and Viola, appeared at 105.2 s. The final cut is 60.0 s:
+recording shows a different match. For 2.1.0 the result screen, round won 1-0
+by Azzurra and Viola, appeared at 70.7 s (observed). The final cut is 60.0 s:
 
 * video: H.264 960 × 600 at 12 fps;
 * audio: AAC stereo, 22,050 Hz;
-* size: 1,408,033 bytes.
+* size: 1,444,561 bytes.
 
 If the run prints `warning: no audio for 10 s`, the host was too busy for
 QEMU's audio link (for 2.0.0 this happened once, while host tests ran at the

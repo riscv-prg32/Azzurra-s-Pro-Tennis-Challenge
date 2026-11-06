@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Host tests for Azzurra's Pro Tennis Challenge (no RISC-V toolchain needed).
 #
-#   tests/run_tests.sh          palette, rules, cartridge flow, render invariant, metadata
+#   tests/run_tests.sh          palette, rules and lockstep, cartridge flow, render invariant,
+#                               online matches between simulated consoles, metadata
 #   tests/run_tests.sh shots    also render every screen to build/shots/*.png (Pillow)
 #
 # PRG32_REPO points to the PRG32 checkout (default ../PRG32); its public headers
@@ -24,10 +25,12 @@ cc "${cflags[@]}" "$root/tests/test_core.c" -o "$out/test_core"
 "$out/test_core" || fail=1
 
 cc "${cflags[@]}" "$root/tests/test_game.c" -o "$out/test_game"
+cc "${cflags[@]}" "$root/tests/test_net.c" -o "$out/test_net"
 if [[ "${1:-}" == "shots" ]]; then
   shots="$root/build/shots"
   mkdir -p "$shots"
   "$out/test_game" "$shots" || fail=1
+  "$out/test_net" "$shots" || fail=1
   python3 - "$shots" <<'PY'
 import sys
 from pathlib import Path
@@ -38,6 +41,7 @@ for ppm in sorted(Path(sys.argv[1]).glob("*.ppm")):
 PY
 else
   "$out/test_game" || fail=1
+  "$out/test_net" || fail=1
 fi
 
 # Metadata must parse and the places that carry the version must agree.

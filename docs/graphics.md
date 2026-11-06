@@ -9,7 +9,7 @@ none is taken from another game.
 tools/geometry.py      court size, camera, projection (shared with az_core.h through G_*)
 tools/palette.py       the fixed colours, the firmware's quantiser, the cell solver
 tools/art_court.py     the stadium and court picture of each surface, the net sprite
-tools/art_cities.py    the fourteen cities: names, rivals, surface, skies, skylines
+tools/art_cities.py    the fourteen cities: names, rivals, surface, skies, front and back skylines
 tools/art_sprites.py   players (9 poses × 2 views), ball, shadows, logo, trophy, confetti, board font
 tools/art_common.py    colour helpers, reduction to a palette, run-length coding, firmware font
 tools/build_art.py     runs all of the above → src/gen/art.inc, assets/png/*.png
@@ -59,8 +59,11 @@ for pixel, on every screen and in every city.
 
 ## The compact palette
 
-Each screen uses one compact palette of 98 entries (`PALETTE_SIZE`). For each
-city, `city_palette[city * 98 …]` holds the final RGB565 values.
+Each screen uses one compact palette of 98 entries (`PALETTE_SIZE`). Each
+city has two views: the **front** view, behind the far end of the court, as
+the broadcast camera sees it, and the **back** view, behind the near end,
+which the far team's consoles see online. For view `city * 2 + back`,
+`city_palette[(city * 2 + back) * 98 …]` holds the final RGB565 values.
 
 | Indices | Count | Use |
 |--------:|------:|-----|
@@ -75,8 +78,8 @@ How each kind of picture refers to these colours:
 * **Court pictures** keep 6-bit indices: colours 0 to 57. The courts are
   shared by every city on the same surface, and the city's own surface
   colours repaint them.
-* **Skylines** keep 6-bit *local* indices, which `view_map[city * 64 + local]`
-  translates to compact indices.
+* **Skylines** keep 6-bit *local* indices, which
+  `view_map[(city * 2 + back) * 64 + local]` translates to compact indices.
 
 **Tints.** A character's colours are swapped by a 32-entry tint table, with
 no extra sprite data:
@@ -84,6 +87,25 @@ no extra sprite data:
 * the hair (Azzurra blonde, Viola brown, the rivals varied);
 * the skin tone;
 * the rivals' shirt (the city's `S_RIVAL`/`S_RIVALD`).
+
+## Back views
+
+Each back view is another original picture of the same city, the side a
+spectator sees on turning round. Examples:
+
+* **Napoli Bay**: the Vomero hill and its castle walls, instead of the bay
+  and the volcano.
+* **Paris**: the Seine and a stone bridge.
+* **Cairo**: the Nile with white-sailed boats, instead of the pyramids.
+* **Sydney**: the city's tower among the office blocks, instead of the
+  harbour.
+
+They are painted by the `*_back` functions in `tools/art_cities.py`
+(`BACK_PAINTERS`), from the same primitives (`hill`, `dome`, `sail` and the
+others). The back palettes are solved like the front ones: a back view
+shares its fixed and surface colours with its city, and its own skyline
+colours have their own cells. `assets/png/cities_back.png` shows all
+fourteen.
 
 ## Run-length rows
 
@@ -98,7 +120,7 @@ Row offsets are `uint16_t` arrays: `view_rows`, `court_rows`, `spr_rows`.
 
 | Data | Rows | Bits/index | Bytes |
 |------|-----:|-----------:|------:|
-| 14 skylines, 320 × 40 | 560 | 6 (local) | 24,361 |
+| 28 skylines (14 front, 14 back), 320 × 40 | 1,120 | 6 (local) | 46,531 |
 | 3 courts, 320 × 150 | 450 | 6 | 15,490 |
 | 35 sprites | 1,079 | 5 | 7,600 |
 
@@ -139,9 +161,10 @@ from ASCII 32. Text is drawn on a 40 × 25 character layer:
 
 ## Review sheets
 
-`build_art.py` also writes two contact sheets:
+`build_art.py` also writes three contact sheets:
 
-* `assets/png/cities.png`: every skyline and court.
+* `assets/png/cities.png`: every front skyline and court.
+* `assets/png/cities_back.png`: every back skyline.
 * `assets/png/sprites.png`: every sprite.
 
 `tests/run_tests.sh shots` renders every screen of the real cartridge code on

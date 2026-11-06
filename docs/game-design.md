@@ -50,13 +50,62 @@ The title menu (UP/DOWN chooses, LEFT/RIGHT changes, A starts):
 
 * **START WORLD TOUR**: rounds 1 to 14 in order.
 * **EXHIBITION: city**: one match in any city, at that city's level.
+* **MATCH: 1 VS 1 or 2 VS 2 (WITH VIOLA)**: singles against one computer
+  rival, or doubles with Viola as the computer partner.
 * **GAMES PER SET: 1, 2 or 4**:
   * 1 or 2: the first team to that many games wins.
   * 4: a team must win by two games, with a tie-break at 4-4.
-* **PLAYERS: 1 or 2**: with 2, the second controller plays Viola.
+* **PLAY ONLINE**: the lobby (below).
+
+The world tour is always doubles. Exhibitions and online matches can be
+either.
 
 After 15 s idle on the title, a **demo** match between four computer players
 starts in a different city each time. Any key returns to the title.
+
+## Online
+
+PLAY ONLINE joins the room `azzurra-tennis:v2` on the PRG32 Multiplayer
+Server that the console's firmware is set to. A board whose firmware has LAN
+discovery (PRG32 `3a6a9e3`, branch `feat/multiplayer-lan-discovery`) also finds a server on its local network by
+itself, a few seconds after its own address fails to answer; until then the
+lobby says CONNECTING TO THE SERVER. On a firmware built without multiplayer,
+the cartridge says that online play is not available.
+
+The lobby lists every console in the room. Each console chooses:
+
+* **TEAM:** AZZURRA (the near end) or RIVALS (the far end);
+* **READY**: A sets it and clears it.
+
+The host, the console with the lowest player ID, also sets MATCH, CITY and
+GAMES PER SET; the other consoles show the host's choice. When at most four
+consoles are ready and their teams fit the match, a 3 s countdown starts.
+The places are filled in this order:
+
+| Match | Consoles | Computer players |
+|-------|----------|------------------|
+| 1 VS 1 | two, one per team | none |
+| 2 VS 2 | two to four, at most two per team | one to three: the free places |
+| 2 VS 2 | four, two per team | none |
+
+A computer partner of a human plays as Viola does in a local match. The
+other computer players play at the level of the chosen city.
+
+**The view from each end.** A console on the RIVALS team sees the match from
+the far end. The court, the players and the ball are turned round, the
+umpire's chair changes side, and the city behind the court is that city's
+back view. The HUD lists the console's own team first, and the stereo
+panning follows the picture. On every console, UP runs towards the net.
+
+**Lockstep.** The consoles send only their D-pad and buttons. Every console
+runs the same rules from the same seed on the same inputs, five ticks
+(165 ms) after they were pressed, so every console plays the same match.
+Details are in [architecture.md](architecture.md#online-play).
+
+**Ending.** An online match cannot be paused: START shows a prompt, where B
+leaves the match and START plays on. If a console leaves, or nothing is
+heard from it for 2.5 s, the match ends on every console with a message,
+and A returns to the lobby.
 
 ## Controls
 
@@ -66,7 +115,7 @@ starts in a different city each time. Any key returns to the title.
 | A | drive; a volley before the bounce; a smash on a high ball | toss, then A again to strike |
 | B | lob | toss / strike, as A |
 | D-pad while hitting | aim: LEFT/RIGHT across, UP deep, DOWN short | LEFT/RIGHT: wide or to the body |
-| START | pause (START resumes, SELECT quits to the title) | |
+| START | pause (START resumes, B quits to the title); online, a prompt (B leaves the match) | |
 
 How the swing works:
 

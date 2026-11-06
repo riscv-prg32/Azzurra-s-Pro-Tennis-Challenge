@@ -9,7 +9,8 @@
  *     that changed was marked dirty);
  *   - the ESP32-C6's indexed framebuffer shows what QEMU's direct one shows (every
  *     colour sits in its own palette cell);
- *   - the flow: title, menu, intro, play, points scored, the demo, pause, results.
+ *   - the flow: title, menu, intro, play, points scored, the demo, pause, results,
+ *     and a singles exhibition against the computer.
  */
 #define AZ_HOST 1
 #include "prg32.h"
@@ -95,14 +96,16 @@ int main(int argc, char **argv) {
     CHECK(v.music.playing && v.music.current == SONG_TITLE, "the title has its music");
     shot("title");
 
-    /* The menu: exhibition in London, 1 game. */
+    /* The menu: exhibition in London, 2 games. */
     tap(PRG32_BTN_DOWN);
     for (int i = 0; i < 4; ++i) tap(PRG32_BTN_RIGHT);
-    tap(PRG32_BTN_DOWN);
+    tap(PRG32_BTN_DOWN);               /* MATCH */
+    tap(PRG32_BTN_DOWN);               /* GAMES PER SET */
     tap(PRG32_BTN_LEFT);
     frames(3, 0);
     shot("menu");
-    CHECK(v.exhibition_city == 4 && v.games_to_win == 2, "menu: city %d, games %d", v.exhibition_city, v.games_to_win);
+    CHECK(v.exhibition_city == 4 && v.games_to_win == 2 && v.doubles, "menu: city %d, games %d", v.exhibition_city, v.games_to_win);
+    tap(PRG32_BTN_UP);
     tap(PRG32_BTN_UP);
     tap(PRG32_BTN_UP);
     tap(PRG32_BTN_A);                  /* START WORLD TOUR */
@@ -133,6 +136,10 @@ int main(int argc, char **argv) {
             shot("pause");
             tap(PRG32_BTN_START);
             CHECK(v.app == APP_PLAY, "START resumes");
+            tap(PRG32_BTN_START);
+            frames(2, 0);
+            tap(PRG32_BTN_START);
+            CHECK(v.app == APP_PLAY, "START pauses and resumes again");
         }
     }
     printf("play: %d points, %d shots, app %d, games %d-%d\n", points, shots_taken, v.app, v.game.games[0], v.game.games[1]);
@@ -146,6 +153,45 @@ int main(int argc, char **argv) {
     tap(PRG32_BTN_B);
     tap(PRG32_BTN_A);
     frames(40, 0);
+
+    /* Singles against the computer: an exhibition, 1 VS 1. */
+    azzurra_init();
+    frames(3, 0);
+    v.menu = MENU_MATCH;
+    tap(PRG32_BTN_RIGHT);
+    CHECK(!v.doubles, "MATCH: 1 VS 1");
+    v.menu = MENU_GAMES;
+    tap(PRG32_BTN_LEFT);
+    tap(PRG32_BTN_LEFT);
+    v.menu = MENU_EXHIBITION;
+    for (int i = 0; i < 4; ++i) tap(PRG32_BTN_RIGHT);
+    tap(PRG32_BTN_A);
+    frames(110, 0);
+    CHECK(v.app == APP_PLAY && v.game.singles && !v.game.p[1].active && !v.game.p[3].active, "a singles match starts");
+    int singles_points = 0;
+    for (int t = 0; t < 30 * 300 && v.app == APP_PLAY; ++t) {
+        uint8_t pts = (uint8_t)(v.game.points[0] + v.game.points[1] + 4 * (v.game.games[0] + v.game.games[1]));
+        frame(autoplayer());
+        if ((uint8_t)(v.game.points[0] + v.game.points[1] + 4 * (v.game.games[0] + v.game.games[1])) != pts) singles_points++;
+        if (t == 150) shot("singles");
+        if ((t % 89) == 0) same_as_repaint("singles");
+        CHECK(!(v.music.playing && v.app == APP_PLAY), "no music in singles play");
+        if (v.music.playing && v.app == APP_PLAY) break;
+    }
+    printf("singles: %d points, app %d, games %d-%d\n", singles_points, v.app, v.game.games[0], v.game.games[1]);
+    CHECK(v.app == APP_ROUNDWON || v.app == APP_GAMEOVER, "the singles match ends (app %d)", v.app);
+
+    /* The pause quits to the title with B (SELECT is START on PRG32). */
+    v.menu = MENU_EXHIBITION;
+    title_screen();
+    frames(3, 0);
+    tap(PRG32_BTN_A);
+    frames(120, 0);
+    tap(PRG32_BTN_START);
+    CHECK(v.app == APP_PAUSE, "paused again");
+    tap(PRG32_BTN_B);
+    frames(2, 0);
+    CHECK(v.app == APP_TITLE, "B in the pause quits to the title (app %d)", v.app);
 
     /* Back to the title and wait for the demo. */
     azzurra_init();

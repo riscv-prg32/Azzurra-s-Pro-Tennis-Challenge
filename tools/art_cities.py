@@ -158,14 +158,16 @@ def stadium_rim(img, color, lamp, night) -> None:
 
 # ---- the cities ----------------------------------------------------------------------------
 
-def paint(city: int) -> Image.Image:
+def paint(city: int, back: bool = False) -> Image.Image:
+    """The view over the far stands: from the broadcast camera (back=False), or from
+    the other end of the court, looking the other way (back=True)."""
     name, _, kind, night, top, bottom, *_rest = CITIES[city]
     img = Image.new("RGB", (W2, H2))
     sky(img, hexrgb(top), hexrgb(bottom), stars=night)
     d = ImageDraw.Draw(img)
     lamp = (255, 246, 200) if night else (220, 224, 230)
     rim = (60, 64, 76) if not night else (24, 26, 40)
-    P = PAINTERS[city]
+    P = (BACK_PAINTERS if back else PAINTERS)[city]
     P(img, d)
     stadium_rim(img, rim, lamp, night)
     return img.resize((320, 40), Image.BOX)
@@ -420,3 +422,311 @@ def athens(img, d):
 PAINTERS = [napoli, rome, paris, chicago, london, newyork, tokyo, cairo, madrid, barcelona, berlin, venice,
             sydney, athens]
 assert len(PAINTERS) == len(CITIES) == 14
+
+
+# ---- the other way: what a player at the far end sees over the stands -------------------------
+
+def hill(img, x0, x1, base, top, color) -> None:
+    """A smooth hill from x0 to x1, its crest `top` above `base`."""
+    d = ImageDraw.Draw(img)
+    pts = [(x0, base)]
+    for k in range(17):
+        x = x0 + (x1 - x0) * k / 16
+        pts.append((x, base - top * math.sin(math.pi * k / 16) ** 0.8))
+    pts.append((x1, base))
+    d.polygon(pts, fill=color)
+
+
+def dome(img, cx, base, r, color, lantern=None) -> None:
+    d = ImageDraw.Draw(img)
+    d.rectangle([cx - r, base - r // 2, cx + r, base], fill=color)
+    d.pieslice([cx - r, base - r // 2 - r, cx + r, base - r // 2 + r], 180, 360, fill=color)
+    if lantern:
+        d.rectangle([cx - 2, base - r // 2 - r - 8, cx + 2, base - r // 2 - r], fill=lantern)
+
+
+def sail(img, x, base, h, color) -> None:
+    d = ImageDraw.Draw(img)
+    d.polygon([(x, base - 3), (x + 4, base - h), (x + 4, base - 3)], fill=color)
+    d.rectangle([x - 4, base - 3, x + 10, base], fill=(60, 60, 70))
+
+
+def napoli_back(img, d):
+    clouds(img, 12, (240, 248, 255), [(380, 90)])
+    # The Vomero hill with Castel Sant'Elmo's star-shaped walls, the Certosa below.
+    hill(img, 60, 520, 70, 46, (96, 128, 86))
+    d.polygon([(250, 30), (340, 30), (352, 40), (238, 40)], fill=(200, 186, 150))
+    d.rectangle([262, 22, 328, 30], fill=(210, 196, 160))
+    d.rectangle([340, 40, 400, 50], fill=(232, 220, 196))
+    d.rectangle([346, 34, 360, 40], fill=(232, 220, 196))
+    # Houses climbing the hill, yellow and red.
+    buildings(img, 80, 540, 70, 6, 18, (236, 196, 120), (176, 96, 70), 7)
+    buildings(img, 150, 300, 70, 14, 26, (224, 150, 110), (150, 80, 60), 13)
+    # Posillipo going down to the sea on the right.
+    sea(img, 62, (40, 110, 178), (120, 180, 220))
+    hill(img, 470, 680, 66, 20, (80, 116, 72))
+    pine(img, 560, 64, 24, (46, 96, 50), (90, 60, 40))
+    pine(img, 40, 70, 28, (46, 96, 50), (90, 60, 40))
+
+
+def rome_back(img, d):
+    clouds(img, 14, (255, 240, 220), [(120, 80), (520, 70)])
+    # The white marble monument with its colonnade and two winged chariots.
+    cx = 320
+    d.rectangle([cx - 120, 34, cx + 120, 66], fill=(240, 236, 226))
+    for x in range(cx - 110, cx + 111, 10):
+        d.rectangle([x, 38, x + 4, 56], fill=(206, 200, 188))
+    d.rectangle([cx - 124, 30, cx + 124, 34], fill=(250, 248, 240))
+    for x in (cx - 112, cx + 100):
+        d.rectangle([x, 18, x + 12, 30], fill=(190, 170, 100))
+        d.polygon([(x - 4, 22), (x + 6, 10), (x + 16, 22)], fill=(190, 170, 100))
+    # Domes and bell towers of the old town.
+    dome(img, 120, 66, 18, (180, 150, 120), (180, 150, 120))
+    dome(img, 520, 66, 16, (196, 160, 130), (196, 160, 130))
+    d.rectangle([570, 24, 582, 66], fill=(200, 150, 110))
+    d.polygon([(568, 24), (576, 14), (584, 24)], fill=(160, 110, 80))
+    buildings(img, 0, 640, 70, 6, 14, (226, 170, 120), (170, 110, 80), 17)
+    for x in (30, 250, 420, 620):
+        pine(img, x, 70, 26, (52, 90, 52), (100, 70, 50))
+
+
+def paris_back(img, d):
+    clouds(img, 14, (250, 252, 255), [(260, 120)])
+    # The Seine and a stone bridge.
+    sea(img, 60, (80, 110, 130), (150, 180, 200))
+    d.rectangle([0, 56, 640, 60], fill=(190, 176, 150))
+    for x in range(20, 640, 60):
+        d.pieslice([x, 56, x + 40, 72], 180, 360, fill=(80, 110, 130))
+    # The two towers of the cathedral and its spire.
+    cx = 190
+    d.rectangle([cx - 50, 22, cx - 18, 56], fill=(200, 190, 166))
+    d.rectangle([cx + 18, 22, cx + 50, 56], fill=(200, 190, 166))
+    d.rectangle([cx - 18, 34, cx + 18, 56], fill=(190, 180, 156))
+    d.ellipse([cx - 9, 38, cx + 9, 50], fill=(110, 100, 120))
+    d.polygon([(cx + 60, 34), (cx + 64, 6), (cx + 68, 34)], fill=(100, 96, 90))
+    # The arch on its hill of avenues, and a lone dark tower.
+    d.rectangle([400, 30, 460, 56], fill=(220, 206, 180))
+    d.rectangle([418, 40, 442, 56], fill=(120, 140, 170))
+    d.pieslice([418, 32, 442, 48], 180, 360, fill=(120, 140, 170))
+    d.rectangle([540, 4, 566, 56], fill=(60, 62, 70))
+    buildings(img, 470, 640, 56, 8, 18, (196, 186, 170), (110, 120, 140), 19)
+    buildings(img, 0, 120, 56, 8, 18, (196, 186, 170), (110, 120, 140), 23)
+
+
+def chicago_back(img, d):
+    clouds(img, 12, (236, 244, 250), [(80, 100), (420, 120)])
+    # Open water to the horizon, a long pier and its wheel.
+    sea(img, 46, (60, 120, 170), (150, 200, 220))
+    d.rectangle([0, 60, 640, 64], fill=(170, 160, 140))
+    d.rectangle([60, 52, 300, 60], fill=(200, 180, 150))
+    cx, cy, r = 220, 34, 18
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(220, 60, 60), width=2)
+    for k in range(8):
+        a = k * math.pi / 4
+        d.line([(cx, cy), (cx + r * math.cos(a), cy + r * math.sin(a))], fill=(230, 230, 236))
+    d.line([(cx, cy), (cx - 8, 52)], fill=(200, 200, 210), width=2)
+    d.line([(cx, cy), (cx + 8, 52)], fill=(200, 200, 210), width=2)
+    for x, h in ((380, 18), (460, 14), (540, 22)):
+        sail(img, x, 50, h, (250, 250, 250))
+    # A lighthouse at the end of the breakwater.
+    d.rectangle([600, 30, 608, 60], fill=(240, 240, 236))
+    d.rectangle([598, 26, 610, 30], fill=(210, 60, 50))
+
+
+def london_back(img, d):
+    clouds(img, 10, (200, 206, 214), [(60, 160), (380, 180)])
+    sea(img, 62, (90, 100, 100), (140, 150, 150))
+    # A bascule bridge between two stone towers.
+    for x in (110, 230):
+        d.rectangle([x, 16, x + 26, 62], fill=(200, 190, 160))
+        d.polygon([(x - 2, 16), (x + 13, 4), (x + 28, 16)], fill=(90, 100, 120))
+    d.rectangle([136, 22, 230, 26], fill=(110, 150, 190))
+    d.rectangle([20, 50, 360, 54], fill=(110, 150, 190))
+    # The great dome, and a glass shard over the river.
+    dome(img, 440, 62, 24, (180, 180, 176), (200, 190, 140))
+    d.rectangle([430, 40, 450, 62], fill=(170, 170, 166))
+    d.polygon([(540, 62), (566, -2), (590, 62)], fill=(150, 170, 190))
+    d.line([(566, -2), (566, 62)], fill=(190, 206, 220))
+    buildings(img, 360, 640, 66, 8, 22, (150, 140, 130), (90, 90, 100), 37)
+
+
+def newyork_back(img, d):
+    d.ellipse([60, 8, 74, 22], fill=(244, 240, 214))
+    sea(img, 58, (14, 22, 50), (60, 70, 110))
+    # A suspension bridge: two stone towers with pointed arches, and its cables.
+    for x in (140, 340):
+        d.rectangle([x, 14, x + 24, 58], fill=(110, 96, 90))
+        for k in (0, 12):
+            d.rectangle([x + 3 + k, 24, x + 9 + k, 40], fill=(14, 22, 50))
+    for a, b in ((0, 140), (164, 340), (364, 520)):
+        d.line([(a, 50 if a == 0 else 14), ((a + b) / 2, 46), (b, 14 if b != 520 else 50)], fill=(170, 170, 190), width=1)
+    d.rectangle([0, 50, 520, 53], fill=(120, 110, 104))
+    for x in range(10, 520, 30):
+        d.point((x, 51), fill=(250, 220, 130))
+    # A spire of steel arches, lit, among the towers behind.
+    buildings(img, 400, 640, 58, 14, 40, (30, 34, 60), (250, 210, 110), 43, lit=True)
+    cx = 560
+    d.rectangle([cx - 10, 14, cx + 10, 58], fill=(70, 76, 100))
+    for k in range(4):
+        d.pieslice([cx - 10 + k * 2, 6 + k * 4, cx + 10 - k * 2, 22 + k * 4], 180, 360, fill=(200, 200, 220))
+    d.line([(cx, 6), (cx, -6)], fill=(220, 220, 230), width=2)
+
+
+def tokyo_back(img, d):
+    d.ellipse([540, 8, 554, 22], fill=(246, 240, 220))
+    sea(img, 58, (20, 16, 50), (120, 60, 140))
+    # A white suspension bridge over the bay, lit along its deck.
+    for x in (170, 330):
+        d.rectangle([x, 18, x + 10, 58], fill=(220, 220, 236))
+    d.line([(40, 50), (175, 18), (255, 44), (335, 18), (470, 50)], fill=(200, 200, 230), width=1)
+    d.rectangle([40, 50, 470, 53], fill=(180, 180, 210))
+    for x in range(44, 470, 14):
+        d.point((x, 51), fill=(250, 120, 200))
+    # A five-storey pagoda on the near shore.
+    cx = 560
+    for k in range(5):
+        w = 26 - k * 4
+        y = 62 - k * 9
+        d.rectangle([cx - w // 2, y - 6, cx + w // 2, y], fill=(150, 40, 50))
+        d.polygon([(cx - w // 2 - 6, y - 6), (cx + w // 2 + 6, y - 6), (cx, y - 10)], fill=(40, 30, 60))
+    d.line([(cx, 16), (cx, 6)], fill=(200, 170, 80), width=2)
+    buildings(img, 0, 140, 68, 10, 30, (40, 30, 70), (240, 120, 200), 53, lit=True)
+
+
+def cairo_back(img, d):
+    d.ellipse([90, 10, 116, 36], fill=(255, 250, 220))
+    # The Nile, with white-sailed boats.
+    sea(img, 58, (50, 110, 150), (170, 210, 220))
+    for x, h in ((160, 26), (300, 20), (430, 24)):
+        d.polygon([(x, 56), (x + 4, 56 - h), (x + 18, 54)], fill=(250, 250, 244))
+        d.rectangle([x - 8, 56, x + 22, 59], fill=(120, 80, 50))
+    # The lattice tower like a lotus, and the domes and minarets of the citadel.
+    cx = 520
+    d.polygon([(cx - 8, 64), (cx - 5, 12), (cx + 5, 12), (cx + 8, 64)], fill=(150, 130, 100))
+    d.polygon([(cx - 10, 12), (cx, 2), (cx + 10, 12)], fill=(150, 130, 100))
+    dome(img, 60, 64, 22, (220, 200, 160), (220, 200, 160))
+    for x in (28, 96):
+        d.rectangle([x - 3, 18, x + 3, 64], fill=(226, 208, 170))
+        d.polygon([(x - 4, 18), (x, 8), (x + 4, 18)], fill=(226, 208, 170))
+    for x in (230, 380, 620):
+        palm(img, x, 68, 30, (60, 110, 50), (120, 90, 60))
+
+
+def madrid_back(img, d):
+    clouds(img, 12, (240, 248, 255), [(120, 90)])
+    # The royal palace: a long white front, and the cathedral's grey dome beside it.
+    d.rectangle([60, 32, 360, 66], fill=(236, 230, 214))
+    for x in range(70, 352, 14):
+        d.rectangle([x, 38, x + 6, 48], fill=(150, 160, 180))
+        d.rectangle([x, 52, x + 6, 62], fill=(150, 160, 180))
+    d.rectangle([56, 28, 364, 32], fill=(246, 242, 230))
+    dome(img, 430, 66, 28, (150, 156, 166), (150, 156, 166))
+    d.rectangle([396, 46, 464, 66], fill=(230, 224, 208))
+    # The sierra far off, with snow.
+    d.polygon([(470, 50), (540, 26), (600, 40), (640, 30), (640, 50)], fill=(150, 160, 190))
+    d.polygon([(530, 30), (540, 26), (552, 32)], fill=(250, 250, 255))
+    buildings(img, 470, 640, 68, 8, 18, (226, 196, 160), (160, 120, 90), 63)
+    for x in (20, 380, 560):
+        tree(img, x, 70, 26, (60, 110, 60), (90, 60, 40))
+
+
+def barcelona_back(img, d):
+    clouds(img, 10, (250, 252, 255), [(300, 70)])
+    # Tibidabo: a hill with its church, the city spreading below.
+    hill(img, 120, 600, 64, 44, (90, 120, 80))
+    d.rectangle([330, 20, 350, 34], fill=(220, 210, 190))
+    d.polygon([(332, 20), (340, 8), (348, 20)], fill=(220, 210, 190))
+    d.line([(340, 8), (340, 2)], fill=(200, 170, 60), width=2)
+    buildings(img, 0, 640, 70, 6, 16, (230, 210, 180), (170, 130, 100), 73)
+    # The column with the explorer on top, by the port.
+    cx = 90
+    d.rectangle([cx - 4, 16, cx + 4, 70], fill=(150, 140, 120))
+    d.rectangle([cx - 12, 60, cx + 12, 70], fill=(170, 160, 140))
+    d.ellipse([cx - 5, 8, cx + 5, 18], fill=(120, 110, 90))
+    # A tower like a bullet, in blue and red.
+    d.rounded_rectangle([520, 10, 548, 70], radius=12, fill=(90, 110, 170))
+    for y in range(18, 66, 6):
+        d.line([(522, y), (546, y)], fill=(200, 80, 70))
+    palm(img, 600, 70, 28, (60, 120, 60), (120, 90, 60))
+
+
+def berlin_back(img, d):
+    clouds(img, 12, (220, 226, 234), [(220, 140), (500, 120)])
+    # The parliament with its glass dome.
+    cx = 200
+    d.rectangle([cx - 100, 36, cx + 100, 66], fill=(206, 200, 184))
+    for x in (cx - 100, cx + 76):
+        d.rectangle([x, 26, x + 24, 66], fill=(196, 190, 174))
+    for x in range(cx - 60, cx + 61, 12):
+        d.rectangle([x, 42, x + 5, 62], fill=(150, 146, 136))
+    d.pieslice([cx - 30, 14, cx + 30, 58], 180, 360, fill=(170, 200, 214))
+    for k in range(-24, 25, 8):
+        d.line([(cx + k, 20), (cx + k * 1.2, 36)], fill=(120, 140, 150))
+    # The victory column with its golden figure.
+    cx = 470
+    d.rectangle([cx - 5, 14, cx + 5, 66], fill=(190, 160, 120))
+    d.rectangle([cx - 14, 58, cx + 14, 66], fill=(170, 150, 120))
+    d.rectangle([cx - 7, 30, cx + 7, 34], fill=(200, 170, 80))
+    d.polygon([(cx - 8, 10), (cx, 2), (cx + 8, 10), (cx, 14)], fill=(230, 190, 60))
+    buildings(img, 520, 640, 68, 10, 22, (170, 170, 176), (110, 116, 130), 83)
+    for x in (360, 580, 30):
+        tree(img, x, 70, 26, (70, 110, 70), (90, 70, 50))
+
+
+def venice_back(img, d):
+    sea(img, 56, (60, 110, 130), (150, 190, 190))
+    clouds(img, 10, (255, 230, 200), [(400, 100)])
+    # The stone bridge with its arcade over the canal.
+    d.pieslice([140, 28, 360, 84], 180, 360, fill=(230, 220, 200))
+    d.pieslice([196, 44, 304, 84], 180, 360, fill=(60, 110, 130))
+    d.rectangle([200, 26, 300, 36], fill=(230, 220, 200))
+    for x in range(206, 296, 14):
+        d.rectangle([x, 28, x + 6, 34], fill=(150, 130, 110))
+    # Palaces along the water, pink and ochre, with pointed windows.
+    for x0, color in ((0, (220, 150, 140)), (380, (230, 190, 120)), (500, (210, 130, 110))):
+        d.rectangle([x0, 26, x0 + 120, 58], fill=color)
+        for x in range(x0 + 6, x0 + 116, 12):
+            d.polygon([(x, 52), (x, 40), (x + 3, 36), (x + 6, 40), (x + 6, 52)], fill=(90, 60, 60))
+    for x in (130, 360, 620):
+        d.rectangle([x, 40, x + 3, 62], fill=(40, 60, 120))
+        d.rectangle([x, 40, x + 3, 44], fill=(240, 240, 240))
+    d.polygon([(420, 64), (480, 64), (490, 58), (474, 62), (426, 62), (414, 56)], fill=(20, 20, 30))
+
+
+def sydney_back(img, d):
+    clouds(img, 14, (250, 252, 255), [(380, 90)])
+    # The city's tower with its golden turret, among the office blocks.
+    buildings(img, 220, 520, 64, 16, 38, (170, 180, 196), (100, 130, 170), 97)
+    cx = 380
+    d.rectangle([cx - 3, 8, cx + 3, 64], fill=(180, 180, 186))
+    d.rectangle([cx - 12, 14, cx + 12, 24], fill=(220, 180, 70))
+    d.line([(cx, 8), (cx, -4)], fill=(200, 200, 210), width=2)
+    # The sea, a beach and a lighthouse on the headland.
+    sea(img, 58, (30, 110, 180), (130, 200, 230))
+    d.rectangle([0, 62, 220, 70], fill=(240, 220, 170))
+    hill(img, 500, 700, 66, 26, (90, 130, 80))
+    d.rectangle([580, 20, 590, 44], fill=(250, 250, 246))
+    d.rectangle([578, 16, 592, 20], fill=(230, 200, 80))
+    for x in (60, 140, 470):
+        tree(img, x, 66, 26, (90, 130, 90), (140, 120, 100))
+
+
+def athens_back(img, d):
+    clouds(img, 10, (255, 236, 200), [(120, 80)])
+    # Lycabettus: a steep hill with a white chapel on the top.
+    d.polygon([(260, 66), (320, 22), (340, 18), (360, 22), (430, 66)], fill=(130, 140, 90))
+    d.rectangle([332, 10, 348, 20], fill=(250, 250, 246))
+    d.polygon([(330, 10), (340, 4), (350, 10)], fill=(250, 250, 246))
+    # The marble stadium's horseshoe, and the sea of the port beyond.
+    sea(img, 56, (40, 110, 180), (140, 200, 230))
+    d.rectangle([60, 48, 220, 66], fill=(240, 236, 224))
+    for y in range(50, 66, 4):
+        d.line([(64, y), (216, y)], fill=(210, 204, 190))
+    buildings(img, 420, 640, 70, 6, 16, (240, 236, 224), (150, 160, 180), 107)
+    for x in (30, 250, 450, 600):
+        cypress(img, x, 70, 30, (60, 90, 60))
+
+
+BACK_PAINTERS = [napoli_back, rome_back, paris_back, chicago_back, london_back, newyork_back, tokyo_back, cairo_back,
+                 madrid_back, barcelona_back, berlin_back, venice_back, sydney_back, athens_back]
+assert len(BACK_PAINTERS) == len(CITIES)

@@ -111,8 +111,10 @@ SCRIPTS = {
         (0.3, "rec", None),
         (6.0, "key", "down"),
         (0.5, "key", "down"),
+        (0.5, "key", "down"),
         (0.5, "key", "right"),          # GAMES PER SET: 4 -> 1
         (0.6, "key", "up"),
+        (0.5, "key", "up"),
         (0.5, "key", "up"),
         (0.8, "key", "a"),              # START WORLD TOUR
         (3.2, "key", "a"),              # skip the end of the intro

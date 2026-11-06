@@ -63,13 +63,14 @@ for arch in "${archs[@]}"; do
   raw="$build_dir/$name-$arch.raw.prg32"
   out="$dist_dir/$name-$arch.prg32"
   log="$build_dir/$name-$arch.build.log"
-  # 4. Portable cartridge. Sprites are required; audio is optional, so the same
-  # image still runs, silently, on a host without it.
+  # 4. Portable cartridge. Sprites are required; audio and multiplayer are optional,
+  # so the same image still runs, silently or offline, on a host without them.
   prg32 cartridge build "$repo_dir/src/azzurra.c" \
     --portable \
     --required-feature sprites \
     --optional-feature audio \
     --optional-feature audio_plus \
+    --optional-feature multiplayer \
     --entry-prefix azzurra \
     --name "Azzurra's Pro Tennis Challenge" \
     --architecture "$arch" \

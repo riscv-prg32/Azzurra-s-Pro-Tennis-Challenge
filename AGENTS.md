@@ -19,6 +19,30 @@ Challenge, a PRG32 portable cartridge for the 128 KiB profile.
 - **Everything advances on the 33 ms tick.** Physics, AI, music and effects
   run in `update_step`; drawing never changes game state.
 
+### Online play
+
+- **The rules must stay deterministic.** Online consoles run in lockstep:
+  each one runs `az_core.h` on the same seed and the same inputs. Anything
+  that changes the game state must depend only on the game state and the
+  four players' inputs: no clock, no frame count, no draw state, no
+  `prg32_*` call. `tests/test_net.c` compares a hash of the game state on
+  every console at every tick.
+- **The far end is drawing only.** The view from the far team's end (`v.rev`)
+  mirrors coordinates in the renderer and the HUD. Only `p[i].rot`, which
+  turns a far human's D-pad, reaches the rules.
+- **The wire format is in `src/az_net.h`** and fits 71 bits (`x`, `y`,
+  `sprite`, `flags`: 16 bits each; `input`: 7). If you change it, change
+  `NET_SIGNATURE`, so that old and new cartridges never meet in one room.
+- **One controller per console.** `prg32_input_read_player(1)` returns
+  player 0's keys, so there is no second local player.
+
+### Keys that are easy to get wrong
+
+- **`PRG32_BTN_SELECT == PRG32_BTN_START`.** Never give SELECT its own
+  meaning; the pause uses B to quit.
+- **A + B + DOWN restarts the firmware.** Scripts that press random keys
+  must not hold B with a direction (`scripts/qemu_netplay.py` presses no B).
+
 ### Generated files
 
 - **These are generated:** `src/gen/*`, `audio/audio.json` and
@@ -60,13 +84,15 @@ Challenge, a PRG32 portable cartridge for the 128 KiB profile.
 - **Do not modify the PRG32 checkout** (`../PRG32`).
   `scripts/qemu_preview.py` works on a temporary copy of the flash image.
 - **Do not test on an attached board without asking.** An upload overwrites a
-  cartridge slot.
+  cartridge slot. When asked, back up the slot first
+  (`esptool read_flash`) and say which slot was used.
 
 ### Honest claims
 
 - **Every number in `docs/` is measured, observed or estimated, and says
-  which.** Nothing has been measured on an ESP32-C6 board for 2.0.0; do not
-  write that something has.
+  which.** On the ESP32-C6 board, 2.1.0 was observed running (screens,
+  local matches); no frame rate was measured there. Do not write that
+  something was measured when it was not.
 
 ## Workflow
 
@@ -94,6 +120,23 @@ The 60 s Store preview, then copy `build/qemu-preview/preview.mp4` to
 ```bash
 scripts/qemu_preview.py --script preview --video --seconds 150 --cut 0:14,28:56,RESULT-10:RESULT+8 --out build/qemu-preview
 ```
+
+Online, with the real PRG32 Multiplayer Server (`../PRG32-Multiplayer-Server`)
+and two to four QEMU consoles; `--teams` gives each console's team:
+
+```bash
+scripts/qemu_netplay.py --match 2v2 --teams 0,1,0,1 --out build/qemu-netplay-2v2
+```
+
+With the board as one more console (only when asked; the cartridge must
+already be in the slot, and the server must run on the LAN with discovery on,
+as in `docs/reproduce.md` section 4b):
+
+```bash
+scripts/qemu_netplay.py --match 1v1 --teams 0 --external-server --port 8081 --board-port /dev/cu.usbmodem101 --board-url http://BOARD_IP --board-slot cart4 --board-team 1 --out build/qemu-netplay-board
+```
+
+The board must not get keys in the lobby: a stray UP + A reaches LEAVE.
 
 The exact environment, the versions and the expected checksums are in
 [docs/reproduce.md](docs/reproduce.md). When gameplay, art or audio change,

@@ -2,7 +2,7 @@
   "abi": "prg32-colophon-1.0",
   "title": "Azzurra's Pro Tennis Challenge",
   "subtitle": "A doubles world tour in fourteen cities",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "release_date": "2026-11-06",
   "developer": {
     "name": "UniParthenope PRG32",
@@ -33,8 +33,8 @@
     {"input": "B", "action": "Lob; toss and serve"},
     {"input": "Joystick while hitting", "action": "Aim: left / right, up deep, down short"},
     {"input": "START", "action": "Pause"},
-    {"input": "SELECT (paused)", "action": "Quit to the title"},
-    {"input": "Second controller", "action": "Viola, Azzurra's partner (PLAYERS: 2)"}
+    {"input": "B (paused)", "action": "Quit to the title"},
+    {"input": "PLAY ONLINE", "action": "Singles or doubles with up to four consoles, through the PRG32 Multiplayer Server"}
   ],
   "start_prompt": "Press A"
 }

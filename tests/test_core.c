@@ -9,13 +9,19 @@
  *   ball:    az_launch lands where it aims, the net stops a low ball, a ball
  *            into the wrong box is a fault, two faults lose the point;
  *   play:    four computer players finish a match, the same seed replays it
- *            exactly, and no player leaves the arena.
+ *            exactly, and no player leaves the arena; singles too;
+ *   singles: the serve alternates by game, the singles lines;
+ *   ends:    a player seeing the court from the far end has her D-pad turned round;
+ *   online:  the input symbols, the snapshot formats, and two lockstep consoles that
+ *            only ever see each other's latest snapshot, late or not at all, still
+ *            run exactly the same inputs (src/az_net.h).
  */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "../src/gen/art.inc"
 #include "../src/az_core.h"
+#include "../src/az_net.h"
 
 static int failures, checks;
 #define CHECK(cond, ...) do { checks++; if (!(cond)) { printf("FAIL %s:%d: ", __FILE__, __LINE__); printf(__VA_ARGS__); printf("\n"); failures++; } } while (0)
@@ -24,7 +30,7 @@ static az_game_t g;
 
 static void fresh(int games_to_win, int order) {
     memset(&g, 0, sizeof g);
-    az_new_match(&g, 5, 0, games_to_win, 12345u, order);
+    az_new_match(&g, 5, 0, games_to_win, 12345u, order, 0);
 }
 
 static void win_points(int team, int n) {
@@ -140,9 +146,13 @@ static void test_courts(void) {
     CHECK(!az_in_service_box(AZ_NEAR, 0, -(G_SINGLES + 30), -300), "wide of the singles line");
     CHECK(az_in_service_box(AZ_FAR, 0, 200, 300), "far deuce serve into near deuce box");
     CHECK(!az_in_service_box(AZ_FAR, 0, -200, 300), "far deuce serve into the wrong box");
-    CHECK(az_in_court(G_DOUBLES, G_HALF_L), "the corner is in");
-    CHECK(!az_in_court(G_DOUBLES + 20, 0), "wide of the doubles line");
-    CHECK(!az_in_court(0, G_HALF_L + 20), "past the baseline");
+    g.singles = 0;
+    CHECK(az_in_court(&g, G_DOUBLES, G_HALF_L), "the corner is in");
+    CHECK(!az_in_court(&g, G_DOUBLES + 20, 0), "wide of the doubles line");
+    CHECK(!az_in_court(&g, 0, G_HALF_L + 20), "past the baseline");
+    g.singles = 1;
+    CHECK(az_in_court(&g, G_SINGLES, G_HALF_L), "singles: the corner is in");
+    CHECK(!az_in_court(&g, G_SINGLES + 30, 0), "singles: the doubles alley is out");
 }
 
 static void test_ball(void) {
@@ -210,9 +220,10 @@ static void test_ball(void) {
 }
 
 /* Four computer players, one whole match; returns a fingerprint. */
-static uint32_t play_match(uint32_t seed, int level, int surface, int *points_out, int *ticks_out, int *escaped) {
+static uint32_t play_match(uint32_t seed, int level, int surface, int singles, int *points_out, int *ticks_out,
+                           int *escaped) {
     memset(&g, 0, sizeof g);
-    az_new_match(&g, level, surface, 2, seed, (int)(seed & 3));
+    az_new_match(&g, level, surface, 2, seed, (int)(seed & 3), singles);
     uint32_t held[4] = {0}, pressed[4] = {0};
     uint32_t hash = 2166136261u;
     int points = 0, t;
@@ -237,14 +248,153 @@ static void test_matches(void) {
     for (int k = 0; k < 9; ++k) {
         int points = 0, ticks = 0, escaped = 0, p2 = 0, t2 = 0, e2 = 0;
         uint32_t seed = 1000u + 77u * (uint32_t)k;
-        uint32_t h1 = play_match(seed, k, k % 3, &points, &ticks, &escaped);
-        uint32_t h2 = play_match(seed, k, k % 3, &p2, &t2, &e2);
+        int singles = k >= 6;
+        uint32_t h1 = play_match(seed, k, k % 3, singles, &points, &ticks, &escaped);
+        uint32_t h2 = play_match(seed, k, k % 3, singles, &p2, &t2, &e2);
         CHECK(g.match_over, "match %d finishes (%d ticks, %d points)", k, ticks, points);
         CHECK(h1 == h2 && points == p2, "match %d replays exactly", k);
         CHECK(escaped == 0, "match %d: a player left the arena", k);
         CHECK(points >= 8, "match %d: %d points", k, points);
-        printf("  match level %2d surface %d: %d-%d in %3d points, %4.1f min\n", k, k % 3, g.games[0], g.games[1], points, ticks * 0.033 / 60);
+        printf("  match %s level %2d surface %d: %d-%d in %3d points, %4.1f min\n", singles ? "1v1" : "2v2", k, k % 3,
+               g.games[0], g.games[1], points, ticks * 0.033 / 60);
     }
+}
+
+static void test_singles(void) {
+    memset(&g, 0, sizeof g);
+    az_new_match(&g, 3, 0, 4, 99u, 0, 1);
+    CHECK(g.singles && g.p[0].active && !g.p[1].active && g.p[2].active && !g.p[3].active, "singles: players 0 and 2");
+    CHECK(g.server == 0 && g.receiver == 2, "singles: Azzurra serves first to the rival");
+    int servers[6];
+    for (int k = 0; k < 6; ++k) {
+        servers[k] = g.server;
+        win_points(k & 1, 4);
+        az_setup_point(&g);
+    }
+    CHECK(servers[0] == 0 && servers[1] == 2 && servers[2] == 0 && servers[3] == 2, "singles: the serve alternates by game");
+    /* Serving from the deuce court, beside the centre mark. */
+    memset(&g, 0, sizeof g);
+    az_new_match(&g, 3, 0, 4, 99u, 1, 1);
+    CHECK(g.server == 2 && g.p[2].x < 0 && g.p[2].x > -200, "singles: the far server starts on her deuce side (x %d)", g.p[2].x);
+    /* Tie-break: one serve, then two each. */
+    memset(&g, 0, sizeof g);
+    az_new_match(&g, 3, 0, 4, 99u, 0, 1);
+    g.games[0] = g.games[1] = 4;
+    g.tiebreak = 1;
+    int tb[5];
+    for (int k = 0; k < 5; ++k) {
+        az_choose_server(&g);
+        tb[k] = g.server;
+        az_score_point(&g, k & 1);
+    }
+    CHECK(tb[0] == 0 && tb[1] == 2 && tb[2] == 2 && tb[3] == 0 && tb[4] == 0, "singles tie-break rotation %d%d%d%d%d", tb[0], tb[1], tb[2], tb[3], tb[4]);
+}
+
+static void test_ends(void) {
+    /* A human at the far end, seeing the court from behind her own baseline. */
+    memset(&g, 0, sizeof g);
+    g.p[2].human = 1;
+    g.p[2].rot = 1;
+    az_new_match(&g, 3, 0, 4, 7u, 0, 1);
+    CHECK(g.p[2].rot && g.p[2].human && !g.p[0].human, "rot is kept by a new match");
+    g.state = PS_RALLY;
+    g.ball.held = 0;
+    g.ball.live = 0;
+    uint32_t held[4] = {0}, pressed[4] = {0};
+    int x0 = g.p[2].x, y0 = g.p[2].y;
+    held[2] = AZ_LEFT | AZ_UP;          /* her left, towards the net */
+    az_tick(&g, held, pressed);
+    CHECK(g.p[2].x > x0, "far player: her left is the camera's right (%d -> %d)", x0, g.p[2].x);
+    CHECK(g.p[2].y > y0, "far player: up goes towards the net (%d -> %d)", y0, g.p[2].y);
+    CHECK(az_rotate(az_rotate(AZ_LEFT | AZ_DOWN | AZ_A)) == (AZ_LEFT | AZ_DOWN | AZ_A), "rotating twice is nothing");
+    /* A computer partner of a human is an ally; the rivals are not. */
+    memset(&g, 0, sizeof g);
+    g.p[0].human = 1;
+    az_new_match(&g, 3, 0, 4, 7u, 0, 0);
+    CHECK(g.p[1].ally && !g.p[2].ally && !g.p[3].ally, "allies");
+}
+
+/* ---- online ---------------------------------------------------------------------- */
+
+static void test_symbols(void) {
+    int bad = 0;
+    for (uint32_t in = 0; in < 64; ++in) {
+        unsigned s = net_sym(in);
+        uint32_t back = net_unsym(s);
+        uint32_t want = in;
+        if ((in & 3u) == 3u) want &= ~3u;            /* left and right cancel */
+        if ((in & 12u) == 12u) want &= ~12u;
+        if (s >= NET_SYMBOLS || back != want) bad++;
+    }
+    CHECK(bad == 0, "every input survives as a symbol (%d bad)", bad);
+    uint8_t sym[NET_W], out[NET_W];
+    unsigned seed = 7;
+    for (int round = 0; round < 500; ++round) {
+        for (int k = 0; k < NET_W; ++k) {
+            seed = seed * 1103515245u + 12345u;
+            sym[k] = (uint8_t)((seed >> 16) % NET_SYMBOLS);
+        }
+        net_snap_t s;
+        uint32_t newest = 1000u + (uint32_t)round * 7u;
+        net_pack_match(&s, newest, sym, round % 16);
+        CHECK(s.input < 128, "the input field fits the wire's 7 bits");
+        unsigned tag = 99;
+        int t6 = net_unpack_match(&s, out, &tag);
+        if (t6 != (int)(newest & 63u) || tag != (unsigned)(round % 16) || memcmp(sym, out, NET_W) != 0) bad++;
+    }
+    CHECK(bad == 0, "match snapshots round-trip (%d bad)", bad);
+    net_lobby_t l = {1, 1, 1, 1, 4, 13, 0xBEEF, 0x1234, 0xF1F0, 3, 9}, m;
+    net_snap_t s;
+    net_pack_lobby(&s, &l);
+    CHECK(s.input < 128 && net_unpack_lobby(&s, &m) == 0 && memcmp(&l, &m, sizeof l) == 0, "lobby snapshots round-trip");
+    CHECK(net_unpack_match(&s, out, &seed) < 0, "a lobby snapshot is not a match snapshot");
+    uint32_t a[3] = {5, 9, 12}, b[3] = {5, 12, 9};
+    CHECK(net_roster_hash(a, 3) != net_roster_hash(b, 3), "the roster hash sees the order");
+}
+
+/* Two to four consoles run the lockstep; each sees the others' latest snapshot only,
+ * at random moments (some never), and one console runs at a third of the rate. */
+static void test_lockstep(int count) {
+    net_lock_t n[NET_MAX];
+    for (int k = 0; k < count; ++k) net_lock_start(&n[k], count, k, 5);
+    uint32_t used[NET_MAX][400];
+    unsigned rng = 4242u + (unsigned)count;
+    int ok = 1;
+    for (int step = 0; step < 30000; ++step) {
+        for (int k = 0; k < count; ++k) {
+            rng = rng * 1103515245u + 12345u;
+            if (k == count - 1 && (rng >> 20) % 3) continue;       /* the slow one */
+            if (n[k].tick >= 400) continue;
+            /* this console's input: some pattern of its own */
+            if (!net_lock_ready(&n[k])) continue;
+            net_lock_local(&n[k], (n[k].tick * (uint32_t)(k + 3) / 7u) & 63u);
+            uint32_t mix = 1;
+            for (int c = 0; c < count; ++c) mix = mix * 131u + net_lock_held(&n[k], c, n[k].tick) * 7u + net_lock_pressed(&n[k], c, n[k].tick);
+            used[k][n[k].tick] = mix;
+            n[k].tick++;
+        }
+        /* delivery: each pair, now and then, the latest snapshot only */
+        for (int a = 0; a < count; ++a) {
+            for (int b = 0; b < count; ++b) {
+                rng = rng * 1103515245u + 12345u;
+                if (a == b || (rng >> 16) % 5) continue;
+                net_snap_t s;
+                net_lock_snapshot(&n[a], &s);
+                if (net_lock_receive(&n[b], a, &s) == -2) {
+                    if (ok) printf("  gap: %d -> %d at ticks %u/%u known %u\n", a, b, n[a].tick, n[b].tick, n[b].known[a]);
+                    ok = 0;
+                }
+            }
+        }
+    }
+    int done = 1;
+    for (int k = 0; k < count; ++k) done &= n[k].tick >= 400;
+    for (int k = 1; k < count; ++k)
+        for (int t = 0; t < 400; ++t)
+            if (used[k][t] != used[0][t]) ok = 0;
+    if (!done) for (int k = 0; k < count; ++k) printf("  console %d at tick %u\n", k, n[k].tick);
+    CHECK(done, "lockstep x%d: every console ran 400 ticks", count);
+    CHECK(ok, "lockstep x%d: every console ran the same inputs", count);
 }
 
 int main(void) {
@@ -252,6 +402,10 @@ int main(void) {
     test_serving();
     test_courts();
     test_ball();
+    test_singles();
+    test_ends();
+    test_symbols();
+    for (int c = 2; c <= NET_MAX; ++c) test_lockstep(c);
     test_matches();
     printf("core: %d checks, %s (%d failures)\n", checks, failures ? "FAILED" : "ok", failures);
     return failures ? 1 : 0;

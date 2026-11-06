@@ -73,6 +73,138 @@ void prg32_audio_note_on_pan(uint8_t c, uint8_t i, uint8_t n, uint8_t v, int8_t 
 }
 void prg32_audio_note_off(uint8_t c) { (void)c; }
 
+/* ---- multiplayer: a relay among consoles simulated in one process (tests/test_net.c) --------
+ * Like the firmware and the PRG32 Multiplayer Server: a console is admitted (gets a
+ * player ID) a moment after it joins; it publishes its latest snapshot every 50 ms
+ * from prg32_multiplayer_tick(); each snapshot reaches every other console after a
+ * random latency, in order; a peer silent for 3 s, or gone, is dropped. */
+#define HOST_MP_MAX 6
+#define HOST_MP_QUEUE 8192
+typedef struct {
+    int joined;
+    uint32_t id, join_ms, last_send_ms;
+    prg32_player_state_t local;
+    prg32_player_state_t seen[HOST_MP_MAX];     /* the latest delivered from each console */
+    uint32_t seen_ms[HOST_MP_MAX], last_due[HOST_MP_MAX];
+    int has[HOST_MP_MAX];
+} host_mp_console_t;
+typedef struct {
+    int from, to;
+    uint32_t due;
+    prg32_player_state_t st;
+} host_mp_msg_t;
+static int host_mp_available = 1, host_mp_cur;
+static host_mp_console_t host_mp[HOST_MP_MAX];
+static host_mp_msg_t host_mp_q[HOST_MP_QUEUE];
+static int host_mp_qn;
+static uint32_t host_mp_lat_min = 20, host_mp_lat_max = 90, host_mp_rng = 12345u, host_mp_sent;
+
+static uint32_t host_mp_rand(void) {
+    host_mp_rng = host_mp_rng * 1103515245u + 12345u;
+    return host_mp_rng >> 8;
+}
+
+static void host_mp_reset(void) {
+    memset(host_mp, 0, sizeof host_mp);
+    host_mp_qn = 0;
+    host_mp_sent = 0;
+}
+
+static int host_mp_admitted(int k) { return host_mp[k].joined && host_ms >= host_mp[k].join_ms + 200u; }
+
+static void host_mp_deliver(void) {
+    int w = 0;
+    for (int i = 0; i < host_mp_qn; ++i) {
+        host_mp_msg_t *m = &host_mp_q[i];
+        if (m->due <= host_ms) {
+            host_mp_console_t *r = &host_mp[m->to];
+            if (r->joined && host_mp[m->from].joined) {
+                if (!r->has[m->from] || (int32_t)(m->st.frame - r->seen[m->from].frame) > 0) r->seen[m->from] = m->st;
+                r->has[m->from] = 1;
+                r->seen_ms[m->from] = host_ms;
+            }
+        } else {
+            host_mp_q[w++] = *m;
+        }
+    }
+    host_mp_qn = w;
+}
+
+void prg32_multiplayer_init(void) {}
+bool prg32_multiplayer_available(void) { return host_mp_available != 0; }
+int prg32_multiplayer_join(const char *signature, uint32_t flags) {
+    (void)signature; (void)flags;
+    host_mp_console_t *c = &host_mp[host_mp_cur];
+    if (!c->joined) {
+        memset(c, 0, sizeof *c);
+        c->joined = 1;
+        c->join_ms = host_ms;
+        c->id = 0x1000u * (uint32_t)(host_mp_cur + 1) + (host_mp_rand() & 0xFFFu);
+    }
+    return 0;
+}
+int prg32_multiplayer_leave(void) {
+    host_mp[host_mp_cur].joined = 0;
+    for (int k = 0; k < HOST_MP_MAX; ++k) host_mp[k].has[host_mp_cur] = 0;   /* "leave" reaches the room */
+    return 0;
+}
+uint32_t prg32_multiplayer_local_player_id(void) { return host_mp_admitted(host_mp_cur) ? host_mp[host_mp_cur].id : 0; }
+int prg32_multiplayer_set_local_state(int16_t x, int16_t y, uint16_t sprite, uint16_t flags) {
+    host_mp_console_t *c = &host_mp[host_mp_cur];
+    if (!c->joined) return -1;
+    c->local.x = x;
+    c->local.y = y;
+    c->local.sprite = sprite;
+    c->local.flags = flags;
+    c->local.frame++;
+    return 0;
+}
+int prg32_multiplayer_set_input(uint32_t input) {
+    host_mp[host_mp_cur].local.input = input & 0x7FFu;
+    return 0;
+}
+void prg32_multiplayer_tick(void) {
+    host_mp_console_t *c = &host_mp[host_mp_cur];
+    if (!host_mp_admitted(host_mp_cur) || host_ms - c->last_send_ms < 50u) return;
+    c->last_send_ms = host_ms;
+    c->local.player_id = c->id;
+    prg32_player_state_t st = c->local;
+    st.input &= 0x7Fu;                          /* the wire carries 7 bits */
+    for (int k = 0; k < HOST_MP_MAX; ++k) {
+        if (k == host_mp_cur || !host_mp_admitted(k) || host_mp_qn >= HOST_MP_QUEUE) continue;
+        uint32_t due = host_ms + host_mp_lat_min + host_mp_rand() % (host_mp_lat_max - host_mp_lat_min + 1u);
+        if (due < c->last_due[k]) due = c->last_due[k];     /* TCP keeps the order */
+        c->last_due[k] = due;
+        host_mp_q[host_mp_qn].from = host_mp_cur;
+        host_mp_q[host_mp_qn].to = k;
+        host_mp_q[host_mp_qn].due = due;
+        host_mp_q[host_mp_qn].st = st;
+        host_mp_qn++;
+        host_mp_sent++;
+    }
+}
+static int host_mp_listed(int r, int k) {
+    return k != r && host_mp[r].has[k] && host_mp[k].joined && host_ms - host_mp[r].seen_ms[k] <= 3000u;
+}
+int prg32_multiplayer_get_peer_count(void) {
+    host_mp_deliver();
+    int n = 0;
+    if (!host_mp_admitted(host_mp_cur)) return 0;
+    for (int k = 0; k < HOST_MP_MAX; ++k) n += host_mp_listed(host_mp_cur, k);
+    return n;
+}
+int prg32_multiplayer_get_peer(int index, prg32_player_state_t *out) {
+    for (int k = 0; k < HOST_MP_MAX; ++k) {
+        if (!host_mp_listed(host_mp_cur, k)) continue;
+        if (index-- == 0) {
+            *out = host_mp[host_mp_cur].seen[k];
+            out->last_seen_ms = host_mp[host_mp_cur].seen_ms[k];
+            return 0;
+        }
+    }
+    return -1;
+}
+
 static void host_write_ppm(const char *path, const uint16_t *fb) {
     FILE *f = fopen(path, "wb");
     if (!f) return;

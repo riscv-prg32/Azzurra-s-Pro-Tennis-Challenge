@@ -9,6 +9,11 @@
  * Units: centimetres. X across the court (+ to the right of the screen), Y along
  * it (0 at the net, + towards the camera), Z up. The ball keeps 1/16 cm (Q4).
  * Team 0 (Azzurra and her partner) plays the near half, team 1 the far half.
+ *
+ * Singles uses players 0 and 2 only (players 1 and 3 are inactive) and the singles
+ * sidelines. A human player marked `rot` sees the court from her own end (an online
+ * player of the far team): her D-pad is turned round before it is applied, so the
+ * same inputs give the same game on every console.
  */
 #ifndef AZ_CORE_H
 #define AZ_CORE_H
@@ -48,6 +53,9 @@ typedef struct {
     int16_t home_x, home_y;          /* where the AI returns between shots */
     uint8_t team, side;              /* side: 0 the deuce (right) half, 1 the ad half */
     uint8_t human;
+    uint8_t active;                  /* 0: not on court (singles: players 1 and 3) */
+    uint8_t rot;                     /* human seeing the court from the far end */
+    uint8_t ally;                    /* computer player teamed with a human: steadier */
     uint8_t swing, shot, backhand;   /* swing tick (0 = idle), kind of shot, mirrored */
     uint8_t moving, step;            /* animation */
     uint8_t react;                   /* AI: ticks before it starts to chase */
@@ -79,6 +87,7 @@ typedef struct {
     az_ball_t ball;
     uint8_t points[2], games[2];
     uint8_t games_to_win;            /* 1, 2 or 4 (4: win by two, tie-break at 4-4) */
+    uint8_t singles;
     uint8_t tiebreak;
     uint8_t order;                   /* position in the serving order */
     uint8_t server, receiver;
@@ -145,8 +154,9 @@ static int az_side_sign(int team, int side) {
     return side == 0 ? s : -s;
 }
 
-static int az_in_court(int x, int y) {           /* doubles lines, cm */
-    return az_abs(x) <= G_DOUBLES + AZ_BALL_R && az_abs(y) <= G_HALF_L + AZ_BALL_R;
+static int az_in_court(const az_game_t *g, int x, int y) {   /* singles or doubles lines, cm */
+    int half_w = g->singles ? G_SINGLES : G_DOUBLES;
+    return az_abs(x) <= half_w + AZ_BALL_R && az_abs(y) <= G_HALF_L + AZ_BALL_R;
 }
 
 /* Is (x, y) in the service box diagonal to a server of `team` serving from `side`? */
@@ -168,6 +178,11 @@ static int az_serve_side(const az_game_t *g) { return az_points_in_game(g) & 1; 
 static void az_choose_server(az_game_t *g) {
     int pos = g->order;
     if (g->tiebreak) pos += (az_points_in_game(g) + 1) / 2;
+    if (g->singles) {                  /* the two players serve a game each */
+        g->server = (uint8_t)((pos & 1) ? 2 : 0);
+        g->receiver = (uint8_t)(2 - g->server);
+        return;
+    }
     g->server = az_serve_order[pos & 3];
     int team = g->p[g->server].team, side = az_serve_side(g);
     int recv_team = 1 - team;
@@ -278,6 +293,18 @@ static void az_setup_point(az_game_t *g) {
     for (int i = 0; i < 4; ++i) {
         az_player_t *p = &g->p[i];
         int half = az_half(p->team);
+        if (g->singles) {
+            /* Server beside the centre mark, receiver on the diagonal; home is the
+             * middle of the baseline. */
+            int sx = az_side_sign(p->team, side);
+            if (!p->active) az_place(p, 0, half * (G_HALF_L + 300));
+            else if (i == g->server) az_place(p, sx * 90, half * (G_HALF_L + 45));
+            else az_place(p, sx * 260, half * (G_HALF_L + 20));
+            p->home_x = 0;
+            p->home_y = (int16_t)(half * (G_HALF_L - 30));
+            p->react = 0;
+            continue;
+        }
         int my = p->side == side ? 1 : 0;       /* the player whose half is in play */
         int sx = az_side_sign(p->team, p->side);
         if (p->team == st) {
@@ -294,7 +321,7 @@ static void az_setup_point(az_game_t *g) {
     }
     /* The server stands on her own half of the court for this point. */
     az_player_t *s = &g->p[g->server];
-    s->x = s->home_x = (int16_t)(az_side_sign(st, side) * 230);
+    if (!g->singles) s->x = s->home_x = (int16_t)(az_side_sign(st, side) * 230);
     az_ball_t *b = &g->ball;
     b->held = 1;
     b->tossed = 0;
@@ -312,16 +339,28 @@ static void az_setup_point(az_game_t *g) {
     g->reason = WHY_NONE;
 }
 
-static void az_new_match(az_game_t *g, int level, int surface, int games_to_win, uint32_t seed, int first_order) {
-    uint8_t humans[4];
-    for (int i = 0; i < 4; ++i) humans[i] = g->p[i].human;
+/* A new match. The caller sets p[i].human and p[i].rot first; they are kept. */
+static void az_new_match(az_game_t *g, int level, int surface, int games_to_win, uint32_t seed, int first_order,
+                         int singles) {
+    uint8_t humans[4], rots[4];
+    for (int i = 0; i < 4; ++i) {
+        humans[i] = g->p[i].human;
+        rots[i] = g->p[i].rot;
+    }
     uint8_t *raw = (uint8_t *)g;
     for (unsigned i = 0; i < sizeof(*g); ++i) raw[i] = 0;
+    g->singles = (uint8_t)(singles ? 1 : 0);
     for (int i = 0; i < 4; ++i) {
-        g->p[i].team = (uint8_t)(i < 2 ? AZ_NEAR : AZ_FAR);
-        g->p[i].side = (uint8_t)(i & 1);
-        g->p[i].human = humans[i];
+        az_player_t *p = &g->p[i];
+        p->team = (uint8_t)(i < 2 ? AZ_NEAR : AZ_FAR);
+        p->side = (uint8_t)(i & 1);
+        p->active = (uint8_t)(!singles || (i & 1) == 0);
+        p->human = (uint8_t)(p->active && humans[i]);
+        p->rot = (uint8_t)(p->human && rots[i]);
     }
+    /* A computer player whose partner is human plays steadier than the rivals. */
+    for (int i = 0; i < 4; ++i) g->p[i].ally = (uint8_t)(g->p[i].active && !g->p[i].human && g->p[i ^ 1].human);
+    if (singles) first_order &= 1;
     g->level = (uint8_t)level;
     g->surface = (uint8_t)surface;
     g->games_to_win = (uint8_t)games_to_win;
@@ -474,7 +513,7 @@ static void az_ball_step(az_game_t *g) {
             } else if (b->bounces == 1) {
                 if (y * az_half(hitter_team) > 0 || b->netted) {
                     az_end_point(g, 1 - hitter_team, b->netted ? WHY_NET : WHY_WRONG_SIDE);
-                } else if (!az_in_court(x, y)) {
+                } else if (!az_in_court(g, x, y)) {
                     az_event(g, EV_OUT, hitter_team, x);
                     az_end_point(g, 1 - hitter_team, WHY_OUT);
                 }
@@ -505,7 +544,7 @@ static void az_ball_step(az_game_t *g) {
 static int az_in_reach(const az_game_t *g, int i) {
     const az_player_t *p = &g->p[i];
     const az_ball_t *b = &g->ball;
-    if (!b->live || b->held || b->tossed || b->team == p->team || b->netted) return 0;
+    if (!p->active || !b->live || b->held || b->tossed || b->team == p->team || b->netted) return 0;
     if (b->serve && b->bounces == 0) return 0;          /* a serve must bounce first */
     if (b->bounces >= 2) return 0;
     if ((b->y / AZ_Q) * az_half(p->team) < -20) return 0; /* still on the other side */
@@ -659,7 +698,7 @@ static void az_move_toward(az_player_t *p, int tx, int ty, int speed) {
 }
 
 static int az_ai_speed(const az_game_t *g, int i) {
-    if (g->p[i].team == AZ_NEAR) return 17;
+    if (g->p[i].ally) return 17;
     return 13 + g->level / 2;
 }
 
@@ -687,7 +726,7 @@ static int az_predict(const az_game_t *g, int i, int *out_x, int *out_y) {
             b.vx = b.vx * az_bounce_slide(g->surface) / 16;
             b.vy = b.vy * az_bounce_slide(g->surface) / 16;
             bounces++;
-            if (bounces == 1 && !az_in_court(b.x / AZ_Q, b.y / AZ_Q)) return -1;   /* let it go */
+            if (bounces == 1 && !az_in_court(g, b.x / AZ_Q, b.y / AZ_Q)) return -1;   /* let it go */
             if (bounces >= 2) return -1;
         }
         int x = b.x / AZ_Q, y = b.y / AZ_Q, z = b.z / AZ_Q;
@@ -742,7 +781,7 @@ static void az_ai(az_game_t *g, int i) {
             int mate = i ^ 1;
             int ax, ay, bx = 0, by = 0;
             int ta = az_predict(g, i, &ax, &ay);
-            int tb = g->p[mate].human ? -1 : az_predict(g, mate, &bx, &by);
+            int tb = (g->p[mate].human || !g->p[mate].active) ? -1 : az_predict(g, mate, &bx, &by);
             if (g->p[mate].human) {
                 /* A human partner takes what is on her side. */
                 int mine = (b->x / AZ_Q) * az_side_sign(p->team, p->side) > 0;
@@ -769,14 +808,15 @@ static void az_ai(az_game_t *g, int i) {
         if (az_in_reach(g, i) && !p->swing) {
             /* Choose the shot: lob a pair at the net, else drive at the open side. */
             const az_player_t *o0 = &g->p[p->team == AZ_NEAR ? 2 : 0], *o1 = &g->p[p->team == AZ_NEAR ? 3 : 1];
+            if (!o1->active) o1 = o0;
             int at_net = az_abs(o0->y) < 500 && az_abs(o1->y) < 500;
             int shot = at_net && (az_rand(g) & 1) ? SHOT_LOB : (az_rand(g) % 9 == 0 ? SHOT_LOB : SHOT_FLAT);
             int gap = (o0->x + o1->x) / 2;
             int aim = gap > 60 ? -1 : gap < -60 ? 1 : (az_rand(g) & 1 ? 1 : -1);
             int depth = (int)(az_rand(g) % 3) - 1;
-            int err = p->team == AZ_NEAR ? 80 : 150 - g->level * 7;
+            int err = p->ally ? 80 : 150 - g->level * 7;
             /* Now and then a real mistake: long, wide or into the net. */
-            int blunder = p->team == AZ_NEAR ? 14 : 8 + g->level;
+            int blunder = p->ally ? 14 : 8 + g->level;
             if (az_rand(g) % (uint32_t)blunder == 0) err += 260;
             p->backhand = (uint8_t)(((b->x / AZ_Q) - p->x) * (p->team == AZ_NEAR ? 1 : -1) < 0);
             p->swing = 1;
@@ -794,9 +834,25 @@ static void az_ai(az_game_t *g, int i) {
 
 /* A human player: the D-pad moves, A drives, B lobs. Swings start on the press and
  * meet the ball if it comes into reach while the racket is moving through. */
+/* The D-pad turned round: what a player at the far end means, in the camera's terms. */
+static uint32_t az_rotate(uint32_t in) {
+    uint32_t out = in & ~(AZ_LEFT | AZ_RIGHT | AZ_UP | AZ_DOWN);
+    if (in & AZ_LEFT) out |= AZ_RIGHT;
+    if (in & AZ_RIGHT) out |= AZ_LEFT;
+    if (in & AZ_UP) out |= AZ_DOWN;
+    if (in & AZ_DOWN) out |= AZ_UP;
+    return out;
+}
+
 static void az_human(az_game_t *g, int i, uint32_t held, uint32_t pressed) {
     az_player_t *p = &g->p[i];
     az_ball_t *b = &g->ball;
+    if (p->rot) {
+        held = az_rotate(held);
+        pressed = az_rotate(pressed);
+    }
+    /* Towards the net is "deep" whichever end she plays from. */
+    uint32_t fwd = p->team == AZ_NEAR ? AZ_UP : AZ_DOWN, back = p->team == AZ_NEAR ? AZ_DOWN : AZ_UP;
     if (g->state == PS_SERVE) {
         p->moving = 0;
         if (i != g->server) return;
@@ -840,11 +896,11 @@ static void az_human(az_game_t *g, int i, uint32_t held, uint32_t pressed) {
     if (!p->swing && (pressed & (AZ_A | AZ_B))) {
         p->swing = 1;
         p->shot = (pressed & AZ_B) ? SHOT_LOB : SHOT_FLAT;
-        p->backhand = (uint8_t)((b->x / AZ_Q) < p->x);
+        p->backhand = (uint8_t)(((b->x / AZ_Q) - p->x) * (p->team == AZ_NEAR ? 1 : -1) < 0);
     }
     if (p->swing >= AZ_SWING_OPEN && p->swing <= AZ_SWING_CLOSE && az_in_reach(g, i)) {
         int aim = (held & AZ_LEFT) ? -1 : (held & AZ_RIGHT) ? 1 : 0;
-        int depth = (held & AZ_UP) ? 1 : (held & AZ_DOWN) ? -1 : 0;
+        int depth = (held & fwd) ? 1 : (held & back) ? -1 : 0;
         /* Timing: struck early the ball is pulled across, late it is pushed. */
         if (!aim) {
             int t = p->swing;
@@ -871,6 +927,7 @@ static void az_tick(az_game_t *g, const uint32_t held[4], const uint32_t pressed
     }
     for (int i = 0; i < 4; ++i) {
         az_player_t *p = &g->p[i];
+        if (!p->active) continue;
         if (p->swing) {
             if (++p->swing > AZ_SWING_TICKS) p->swing = 0;
         }

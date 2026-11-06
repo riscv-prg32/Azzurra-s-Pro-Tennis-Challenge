@@ -37,16 +37,17 @@ PALETTE_SIZE = VIEWB + pal.VIEW_COLORS
 FONT_FIRST, FONT_COUNT = 32, 64          # ' ' .. '_'
 
 
-def city_palette(city: int):
-    """Solve the city's surface and view colours; return (palette RGB565 [PALETTE_SIZE],
-    view picture as compact indices)."""
+def city_palette(city: int, back: bool = False):
+    """Solve the city's surface and view colours for one of its two views; return
+    (palette RGB565 [PALETTE_SIZE], view picture as compact indices, local indices,
+    local-to-compact map)."""
     roles = ac.surface_colors(city)
     shirt, shirtd = ac.CITIES[city][6], ac.CITIES[city][7]
     from art_common import hexrgb
     roles = roles + [hexrgb(shirt), hexrgb(shirtd)]
     surface = pal.solve_view([to565(c) for c in roles])
     taken = {**pal.fixed_holders(), **{pal.cube_index(c): c for c in surface}}
-    view_img = ac.paint(city)
+    view_img = ac.paint(city, back)
     colors, pixels = reduce_view(view_img, pal.VIEW_COLORS, taken, dither=False)
     # Each reduced colour is either one already held (fixed or surface) or a new one.
     fixed_cells = {pal.cube_index(c): i for i, c in enumerate(pal.FIXED_RGB565) if i != ct.FIX["clear"]}
@@ -108,14 +109,17 @@ def main() -> int:
     for k, name in enumerate(("IN", "IN2", "OUT", "OUT2", "LINE", "LINED", "WEAR", "EDGE", "RIVAL", "RIVALD")):
         out.append(f"#define S_{name} {SURF + k}")
 
-    # ---- cities: palettes and skylines -----------------------------------------
+    # ---- cities: palettes and skylines, two views each -------------------------
+    # Scene s = 2 * city + back: back = 0 is the broadcast camera behind the near
+    # baseline, back = 1 the view from the far end (an online player of the far team).
     palettes, views, locals_, maps = [], [], [], []
     for city in range(len(ac.CITIES)):
-        p, v, local, vmap = city_palette(city)
-        palettes.append(p)
-        views.append(v)
-        locals_.append(local)
-        maps += vmap
+        for back in (False, True):
+            p, v, local, vmap = city_palette(city, back)
+            palettes.append(p)
+            views.append(v)
+            locals_.append(local)
+            maps += vmap
     out.append(f"#define CITY_COUNT {len(ac.CITIES)}")
     out.append(array("uint16_t", "city_palette", [c for p in palettes for c in p]))
     vdata: list[int] = []
@@ -210,15 +214,17 @@ def main() -> int:
     (ROOT / "src/gen/art.inc").write_text("\n".join(out) + "\n", encoding="utf-8")
 
     # ---- previews -------------------------------------------------------------------------
-    sheet = Image.new("RGB", (g.GAME_W * 2, g.GAME_H * 7), (0, 0, 0))
-    for city in range(len(ac.CITIES)):
-        kind = ac.CITIES[city][2]
-        draw = [(net, net_x, net_y)]
-        draw += [(sprites[sp_index("board", k % len(sp.SPONSORS), sprites)][1], s[0], s[1])
-                 for k, s in enumerate(slots)]
-        img = render_preview(palettes[city], views[city], courts[(ct.CLAY, ct.GRASS, ct.HARD).index(kind)], draw)
-        sheet.paste(img, ((city % 2) * g.GAME_W, (city // 2) * g.GAME_H))
-    sheet.save(png / "cities.png")
+    for back, name in ((0, "cities.png"), (1, "cities_back.png")):
+        sheet = Image.new("RGB", (g.GAME_W * 2, g.GAME_H * 7), (0, 0, 0))
+        for city in range(len(ac.CITIES)):
+            kind = ac.CITIES[city][2]
+            draw = [(net, net_x, net_y)]
+            draw += [(sprites[sp_index("board", k % len(sp.SPONSORS), sprites)][1], s[0], s[1])
+                     for k, s in enumerate(slots)]
+            k = 2 * city + back
+            img = render_preview(palettes[k], views[k], courts[(ct.CLAY, ct.GRASS, ct.HARD).index(kind)], draw)
+            sheet.paste(img, ((city % 2) * g.GAME_W, (city // 2) * g.GAME_H))
+        sheet.save(png / name)
     big = Image.new("RGBA", (360, 200), (40, 40, 48, 255))
     x = y = 2
     rowh = 0
@@ -232,7 +238,7 @@ def main() -> int:
         x += img.width + 2
         rowh = max(rowh, img.height)
     big.resize((720, 400), Image.NEAREST).save(png / "sprites.png")
-    print(f"art: {len(ac.CITIES)} cities, views {len(vdata)} B, courts {len(cdata)} B, "
+    print(f"art: {len(ac.CITIES)} cities x 2 views, views {len(vdata)} B, courts {len(cdata)} B, "
           f"{len(sprites)} sprites {len(sdata)} B, palette {PALETTE_SIZE} entries")
     return 0
 
