@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this cartridge or its tools, please cite it as below."
+title: "Azzurra's Pro Tennis Challenge: a PRG32 doubles tennis cartridge"
+version: 2.0.0
+date-released: 2026-11-06
+license: MIT
+repository-code: "https://github.com/riscv-prg32/Azzurra-s-Pro-Tennis-Challenge"
+authors:
+  - family-names: Montella
+    given-names: Raffaele
+    affiliation: "University of Naples \"Parthenope\""
+keywords:
+  - PRG32
+  - RISC-V
+  - RV32IMAC
+  - game cartridge
+  - indexed colour
+  - SID-like synthesis
+  - reproducibility

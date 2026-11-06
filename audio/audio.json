@@ -1,0 +1,216 @@
+{
+  "samples": [],
+  "instruments": [
+    {
+      "name": "bass",
+      "sample_id": 34394,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 60,
+      "sustain": 90,
+      "release": 20
+    },
+    {
+      "name": "comp_l",
+      "sample_id": 34578,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 40,
+      "sustain": 0,
+      "release": 16
+    },
+    {
+      "name": "comp_r",
+      "sample_id": 34606,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 40,
+      "sustain": 0,
+      "release": 16
+    },
+    {
+      "name": "lead_a",
+      "sample_id": 35790,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 2,
+      "decay": 70,
+      "sustain": 160,
+      "release": 34
+    },
+    {
+      "name": "lead_b",
+      "sample_id": 35798,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 2,
+      "decay": 70,
+      "sustain": 160,
+      "release": 34
+    },
+    {
+      "name": "lead_c",
+      "sample_id": 35806,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 2,
+      "decay": 70,
+      "sustain": 160,
+      "release": 34
+    },
+    {
+      "name": "arp",
+      "sample_id": 33760,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 34,
+      "sustain": 0,
+      "release": 14
+    },
+    {
+      "name": "kick",
+      "sample_id": 36003,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 38,
+      "sustain": 0,
+      "release": 10
+    },
+    {
+      "name": "snare",
+      "sample_id": 33571,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 30,
+      "sustain": 0,
+      "release": 12
+    },
+    {
+      "name": "hat",
+      "sample_id": 33763,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 12,
+      "sustain": 0,
+      "release": 6
+    },
+    {
+      "name": "echo",
+      "sample_id": 34530,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 3,
+      "decay": 56,
+      "sustain": 0,
+      "release": 26
+    },
+    {
+      "name": "pad",
+      "sample_id": 34273,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 30,
+      "decay": 90,
+      "sustain": 150,
+      "release": 80
+    },
+    {
+      "name": "sfx_pop",
+      "sample_id": 34762,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 14,
+      "sustain": 0,
+      "release": 6
+    },
+    {
+      "name": "sfx_thwack",
+      "sample_id": 35491,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 22,
+      "sustain": 0,
+      "release": 8
+    },
+    {
+      "name": "sfx_bounce",
+      "sample_id": 35107,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 20,
+      "sustain": 0,
+      "release": 8
+    },
+    {
+      "name": "sfx_net",
+      "sample_id": 34211,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 50,
+      "sustain": 0,
+      "release": 20
+    },
+    {
+      "name": "sfx_call",
+      "sample_id": 34658,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 70,
+      "sustain": 120,
+      "release": 18
+    },
+    {
+      "name": "sfx_chime",
+      "sample_id": 33760,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 62,
+      "sustain": 0,
+      "release": 40
+    },
+    {
+      "name": "sfx_crowd",
+      "sample_id": 33379,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 70,
+      "decay": 120,
+      "sustain": 140,
+      "release": 110
+    },
+    {
+      "name": "sfx_toss",
+      "sample_id": 33760,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 30,
+      "sustain": 0,
+      "release": 10
+    },
+    {
+      "name": "sfx_buzz",
+      "sample_id": 35361,
+      "default_volume": 255,
+      "default_pan": 0,
+      "attack": 0,
+      "decay": 60,
+      "sustain": 60,
+      "release": 16
+    }
+  ],
+  "tracks": []
+}

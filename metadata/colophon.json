@@ -1,0 +1,40 @@
+{
+  "abi": "prg32-colophon-1.0",
+  "title": "Azzurra's Pro Tennis Challenge",
+  "subtitle": "A doubles world tour in fourteen cities",
+  "version": "2.0.0",
+  "release_date": "2026-11-06",
+  "developer": {
+    "name": "UniParthenope PRG32",
+    "url": "https://github.com/riscv-prg32/Azzurra-s-Pro-Tennis-Challenge"
+  },
+  "authors": [
+    {
+      "role": "concept, project lead",
+      "name": "Raffaele Montella - UniParthenope"
+    },
+    {
+      "role": "game design, programming, pixel art, music, documentation",
+      "name": "Claude Code (Anthropic)"
+    }
+  ],
+  "license": "MIT",
+  "copyright": "Copyright 2026 PRG32",
+  "acknowledgements": [
+    "An original game: its players, cities, pictures, music and sounds were made for it. It reproduces no existing tennis game.",
+    "Every picture is drawn by the scripts in tools/ from simple shapes: the landmarks are well-known silhouettes, painted small. No photograph is traced or sampled.",
+    "Every sound is the PRG32 SID-like synthesizer playing an original score. No samples, no recordings.",
+    "The row compositor, the palette solver, the sequencer and the QEMU capture tool are adapted from The Trerrote Connection, You Have Got Pizza: Deluxe Edition and Drumfight Napoli 97 (PRG32 family, MIT)."
+  ],
+  "content_notice": "Sport. No violence.",
+  "controls": [
+    {"input": "Joystick", "action": "Run"},
+    {"input": "A", "action": "Drive / volley / smash; toss and serve"},
+    {"input": "B", "action": "Lob; toss and serve"},
+    {"input": "Joystick while hitting", "action": "Aim: left / right, up deep, down short"},
+    {"input": "START", "action": "Pause"},
+    {"input": "SELECT (paused)", "action": "Quit to the title"},
+    {"input": "Second controller", "action": "Viola, Azzurra's partner (PLAYERS: 2)"}
+  ],
+  "start_prompt": "Press A"
+}

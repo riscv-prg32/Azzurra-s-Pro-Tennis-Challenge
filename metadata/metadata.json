@@ -1,0 +1,28 @@
+{
+  "abi": "prg32-metadata-1.0",
+  "id": "org.riscv-prg32.azzurra-pro-tennis",
+  "title": "Azzurra's Pro Tennis Challenge",
+  "version": "2.0.0",
+  "summary": "Doubles tennis world tour: Azzurra and Viola against fourteen pairs, from Napoli to the final in Athens.",
+  "description": "Azzurra and her partner Viola play a doubles world tour of fourteen rounds: Napoli, Rome, Paris, Chicago, London, New York, Tokyo, Cairo, Madrid, Barcelona, Berlin, Venice, Sydney and Athens, each with its own skyline, its own rival pair and its own court. Clay is slow and bounces high, grass skids low, hard courts sit in between, and New York and Tokyo are played under floodlights. Real doubles rules: the serve passes from team to team and partner to partner, it must land in the diagonal box, faults, lets and double faults, 15-30-40, deuce and advantage, sets to 1, 2 or 4 games with a tie-break at 4-4. Run with the joystick; A drives, volleys and smashes, B lobs; hold a direction as you hit to aim. A second controller plays Viola. The computer pairs get quicker and steadier as the tour goes on, an exhibition mode plays any city, and the title falls into a demo match. A 320 x 200 broadcast view in 8-bit indexed colour on the 128 KiB profile: the court is drawn in perspective, the net and players in depth order, one screen row at a time. Music, an original SID-like stereo soundtrack, plays on the title, the results and the champions' screen; during play only the sounds of the game: racket, bounce, net, line calls and the crowd.",
+  "authors": [
+    {
+      "name": "Raffaele Montella",
+      "affiliation": "UniParthenope"
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/riscv-prg32/Azzurra-s-Pro-Tennis-Challenge",
+  "repository": "https://github.com/riscv-prg32/Azzurra-s-Pro-Tennis-Challenge",
+  "language": "en",
+  "tags": ["game", "sports", "tennis", "doubles", "arcade", "riscv", "indexed-color", "sid-like", "stereo", "two-players"],
+  "category": "game",
+  "entry_prefix": "azzurra",
+  "viewport": "320x200",
+  "players": "1-2",
+  "controls": "Joystick run; A drive/volley/smash and serve; B lob; hold a direction while hitting to aim; START pause; second controller plays the partner",
+  "created_at": "2026-11-05T00:00:00Z",
+  "updated_at": "2026-11-06T00:00:00Z",
+  "runtime": {"platform": "PRG32", "isa": "RV32IMAC", "cartridge_ram_kib": 128,
+    "architectures": [{"id": "qemu", "target": "esp32c3"}, {"id": "esp32c6", "target": "esp32c6"}]}
+}

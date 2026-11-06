@@ -53,3 +53,10 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Build products (scripts/build.sh, tests/run_tests.sh, scripts/qemu_preview.py)
+build/
+__pycache__/
+*.pyc
+dist/store-bundle/
+.DS_Store
