@@ -65,7 +65,7 @@ A maintainer with an account on the Store submits the ZIP in one of two ways:
   the token in a script or commit it:
 
   ```bash
-  python3 -m prg32 store publish-bundle ../Azzurra-s-Pro-Tennis-Challenge/dist/azzurra-pro-tennis-2.1.0-store.zip --store-url <store-url> --token <token>
+  python3 -m prg32 store publish-bundle ../Azzurra-s-Pro-Tennis-Challenge/dist/azzurra-pro-tennis-2.2.0-store.zip --store-url <store-url> --token <token>
   ```
 
 The submission waits for an editor to verify it. The editor can watch the

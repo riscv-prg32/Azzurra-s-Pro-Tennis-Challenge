@@ -89,7 +89,7 @@ On every screen, two invariants are checked:
 * **Same picture on both hosts.** The ESP32-C6's indexed framebuffer, shown
   through the system palette, equals QEMU's direct-colour framebuffer.
 
-Expected output (version 2.1.0, Apple clang 21, macOS):
+Expected output (version 2.2.0, Apple clang 21, macOS; 2.1.0 printed the same numbers):
 
 ```
 palette: 48 fixed colours (32 for sprites), 0 collisions
@@ -104,7 +104,7 @@ ok (0 failures)
   497 tick states compared, 0 differ, 928 snapshots relayed, 32 s
   ...
 ok (0 failures)
-metadata: version 2.1.0, 0 failures
+metadata: version 2.2.0, 0 failures
 ```
 
 The core and game tests are deterministic (fixed seeds and a fake clock), so

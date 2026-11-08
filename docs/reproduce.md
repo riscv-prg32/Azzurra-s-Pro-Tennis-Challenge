@@ -2,7 +2,7 @@
 
 This page lets anyone:
 
-* **Reproduce** release 2.1.0: rebuild the same files from this repository,
+* **Reproduce** release 2.2.0: rebuild the same files from this repository,
   and check them against the published checksums.
 * **Replicate** it: rebuild the cartridge from its generators and sources,
   on another machine, and get a working cartridge even where the bytes differ.
@@ -11,11 +11,11 @@ Everything that the build uses is in this repository or in the PRG32
 repository, except four tools: the RISC-V compiler, QEMU, Python with Pillow,
 and ffmpeg.
 
-## 1. The environment used for 2.1.0
+## 1. The environment used for 2.2.0
 
 | Component | Version used | Needed for |
 |-----------|--------------|------------|
-| This repository | the commit tagged/merged as 2.1.0 | everything |
+| This repository | the commit tagged/merged as 2.2.0 | everything |
 | [PRG32](https://github.com/riscv-prg32/PRG32) | `1fa8474427bb3998a79d2b350550efdb2578b3be` (2026-11-04), checked out next to this repository as `../PRG32` | cartridge ABI, build tool, Store tool, audio packer, QEMU firmware, firmware font |
 | RISC-V compiler | `riscv32-esp-elf-gcc` 14.2.0, crosstool-NG `esp-14.2.0_20241119` (ESP-IDF 5.4 tools, in `~/.espressif/tools/riscv32-esp-elf/`) | cartridges |
 | ESP-IDF | v5.4 | building PRG32's QEMU firmware |
@@ -122,10 +122,10 @@ Expected output:
 art: 14 cities, views 24361 B, courts 15490 B, 35 sprites 7600 B, palette 98 entries
 audio: 21 instruments, 123 patterns (1968 B), 4 songs (985 B), 17 effects (125 B)
 position independent: runs unchanged at any load address
-[INFO] code=80864 mem=87004 audio=208
-.../dist/azzurra-pro-tennis-esp32c6.prg32: package 91565/131072, RAM 87004/131072
-[INFO] code=80864 mem=87004 audio=208
-.../dist/azzurra-pro-tennis-qemu.prg32: package 91566/131072, RAM 87004/131072
+[INFO] code=116928 mem=123576 audio=208
+.../dist/azzurra-pro-tennis-esp32c6.prg32: package 127959/131072, RAM 123576/131072
+[INFO] code=116928 mem=123576 audio=208
+.../dist/azzurra-pro-tennis-qemu.prg32: package 127960/131072, RAM 123576/131072
 ```
 
 Running the build twice gives byte-identical packages.
@@ -138,7 +138,7 @@ tests/run_tests.sh shots
 
 The tests should end with `core: 622 checks, ok`, then `ok (0 failures)`
 twice (the game, then the online tests), then
-`metadata: version 2.1.0, 0 failures`. See [testing.md](testing.md).
+`metadata: version 2.2.0, 0 failures`. See [testing.md](testing.md).
 
 ### Step 4: the Store bundle
 
@@ -146,19 +146,19 @@ twice (the game, then the online tests), then
 scripts/pack-store-bundle.sh
 ```
 
-This writes `dist/azzurra-pro-tennis-2.1.0-store.zip`. It validates the
+This writes `dist/azzurra-pro-tennis-2.2.0-store.zip`. It validates the
 bundle with the CartridgeStore's ingestion code when `../CartridgeStore` is
 present, and prints `READY for submission (store-ingest)`. The ZIP's
 timestamps are pinned to the release date, so it is byte-reproducible too.
 
-### Checksums of release 2.1.0
+### Checksums of release 2.2.0
 
 These are the checksums in `dist/SHA256SUMS`:
 
 ```
-be3cba0b928e9ea1f7ce8cf8d1a61806a0bae3a665936a0a715c1dc7e8bb622e  azzurra-pro-tennis-esp32c6.prg32
-464870f5c9eb4151bb91c797a80c4ef484c9e541fbba50d68fd0778f7b07a7f5  azzurra-pro-tennis-qemu.prg32
-c8b5a18d5b0b36a8a4155a62366b92c44a8b8280016ab7f389ce2b24c69a5055  azzurra-pro-tennis-2.1.0-store.zip
+d05e479e0343135278e3a27bbce5c001cd833698d847bfe5b49f527374ff1672  azzurra-pro-tennis-esp32c6.prg32
+ecdd3e72d3437a5fe46d5e021a5ec5c2e707493e918ef2afdd0b4fb46f9c7790  azzurra-pro-tennis-qemu.prg32
+58629b080ba435aa9ec98684c0b323bea6a8719cf39d418ee7066dc86c127838  azzurra-pro-tennis-2.2.0-store.zip
 ```
 
 Two things make the packages' checksums depend on more than the source:
@@ -311,7 +311,8 @@ running the cartridge; nothing is drawn or mixed afterwards.
 
 QEMU's timing relative to the host varies from run to run, so a new
 recording shows a different match. For 2.1.0 the result screen, round won 1-0
-by Azzurra and Viola, appeared at 70.7 s (observed). The final cut is 60.0 s:
+by Azzurra and Viola, appeared at 70.7 s (observed). 2.2.0 ships the same
+recording: its only change is the pause key, and the preview never pauses. The final cut is 60.0 s:
 
 * video: H.264 960 × 600 at 12 fps;
 * audio: AAC stereo, 22,050 Hz;

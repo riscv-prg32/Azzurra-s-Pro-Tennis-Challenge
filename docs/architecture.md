@@ -146,21 +146,21 @@ incremental frame must equal a clean repaint of the same state.
 
 ## Memory and size budget (128 KiB profile)
 
-These are the figures from the build log of version 2.1.0
+These are the figures from the build log of version 2.2.0
 (`build/azzurra-pro-tennis-*.build.log`), measured:
 
 | Item | Bytes |
 |------|------:|
-| Code + read-only data (`code=`) | 116,844 |
-| Cartridge memory image incl. BSS (`mem=`) | 123,492 of 131,072 |
+| Code + read-only data (`code=`) | 116,928 |
+| Cartridge memory image incl. BSS (`mem=`) | 123,576 of 131,072 |
 | AUD0 audio block | 208 |
-| Package, ESP32-C6 (with Store trailer) | 127,782 of 131,072 |
-| Package, QEMU | 127,780 of 131,072 |
+| Package, ESP32-C6 (with Store trailer) | 127,959 of 131,072 |
+| Package, QEMU | 127,960 of 131,072 |
 
 2.0.0 had `code=` 80,864. Of the 35,980 bytes added in 2.1.0, the back
 views take 26,930 (their pictures, row offsets, palettes and colour maps); singles, the
-lobby and the lockstep take the rest. 3,290 bytes of the package limit are
-left (ESP32-C6 package).
+lobby and the lockstep take the rest. The A + B pause of 2.2.0 added 84
+bytes of code. 3,113 bytes of the package limit are left (ESP32-C6 package).
 
 The largest items of read-only data are:
 

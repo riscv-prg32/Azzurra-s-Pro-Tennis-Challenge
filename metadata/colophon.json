@@ -2,8 +2,8 @@
   "abi": "prg32-colophon-1.0",
   "title": "Azzurra's Pro Tennis Challenge",
   "subtitle": "A doubles world tour in fourteen cities",
-  "version": "2.1.0",
-  "release_date": "2026-11-06",
+  "version": "2.2.0",
+  "release_date": "2026-11-08",
   "developer": {
     "name": "UniParthenope PRG32",
     "url": "https://github.com/riscv-prg32/Azzurra-s-Pro-Tennis-Challenge"
