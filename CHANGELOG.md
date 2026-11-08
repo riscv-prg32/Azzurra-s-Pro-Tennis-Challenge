@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+* **A + B pauses; START never does.** START is the joystick's centre click,
+  pressed by accident while running. Pressing A and B together now pauses a
+  local match (that tick is not played, so the chord strikes nothing); in
+  the pause A resumes and B quits to the title. Online, A + B opens the
+  prompt, where B leaves the match and A plays on; the match keeps running,
+  and the console sends neither A nor B until both are released. START does
+  nothing during a match.
+
 ## 2.1.0 — 2026-11-06
 
 Singles, and online play through the PRG32 Multiplayer Server.

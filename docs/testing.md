@@ -70,7 +70,9 @@ The test flow:
 3. the tour starts with a silent intro;
 4. a scripted beginner plays a whole match (points are scored, the ball is
    struck, no music plays);
-5. START pauses and resumes, twice, and B in the pause quits to the title;
+5. START does not pause; A + B pauses without striking the ball (also B
+   first, then A), START does not resume, A resumes, A + B in the pause
+   resumes, and B in the pause quits to the title;
 6. the result screen has music;
 7. the title falls into the demo, which plays points without music;
 8. every city's intro renders, and the grass and the two floodlit courts
@@ -286,7 +288,8 @@ taken with `prg32 esp32c6 screenshot --url http://BOARD_IP` over Wi-Fi.
   in Cairo;
 * a singles exhibition in Napoli against the computer, played with scripted
   key presses to its game-over screen (2-0 to the computer);
-* START pauses the match, and B in the pause returns to the title;
+* START paused the match (2.1.0; A + B pauses since), and B in the pause
+  returned to the title;
 * a doubles exhibition with Viola, with points won and lost;
 * PLAY ONLINE opens the lobby, which first showed CONNECTING TO THE SERVER:
   the board's firmware is set to the server `ws://192.168.1.155:8081`, and no

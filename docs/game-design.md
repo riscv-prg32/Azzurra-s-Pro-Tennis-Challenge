@@ -102,8 +102,9 @@ runs the same rules from the same seed on the same inputs, five ticks
 (165 ms) after they were pressed, so every console plays the same match.
 Details are in [architecture.md](architecture.md#online-play).
 
-**Ending.** An online match cannot be paused: START shows a prompt, where B
-leaves the match and START plays on. If a console leaves, or nothing is
+**Ending.** An online match cannot be paused: A + B together shows a prompt,
+where B leaves the match and A plays on (the match runs on meanwhile, and
+the console's A and B do not reach the court until both are released). If a console leaves, or nothing is
 heard from it for 2.5 s, the match ends on every console with a message,
 and A returns to the lobby.
 
@@ -115,7 +116,8 @@ and A returns to the lobby.
 | A | drive; a volley before the bounce; a smash on a high ball | toss, then A again to strike |
 | B | lob | toss / strike, as A |
 | D-pad while hitting | aim: LEFT/RIGHT across, UP deep, DOWN short | LEFT/RIGHT: wide or to the body |
-| START | pause (START resumes, B quits to the title); online, a prompt (B leaves the match) | |
+| A + B together | pause (A resumes, B quits to the title); online, a prompt (B leaves the match, A plays on) | |
+| START | nothing: it is the joystick's centre click, easily pressed while running | |
 
 How the swing works:
 

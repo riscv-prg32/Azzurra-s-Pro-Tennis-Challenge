@@ -97,9 +97,9 @@ SCRIPTS = {
         (0.0, "shot", "rally2"),
         (0.0, "chord", (("right", "a"), 1.5)),
         (0.0, "shot", "rally3"),
-        (0.2, "key", "start"),
+        (0.2, "chord", (("a", "b"), 0.3)),   # A + B pauses (START never does)
         (0.6, "shot", "pause"),
-        (0.3, "key", "start"),
+        (0.3, "key", "a"),                   # A resumes
         (2.0, "shot", "resumed"),
     ],
     # The Store preview: the title and its music, the menu set to a one-game set,

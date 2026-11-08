@@ -32,7 +32,7 @@
     {"input": "A", "action": "Drive / volley / smash; toss and serve"},
     {"input": "B", "action": "Lob; toss and serve"},
     {"input": "Joystick while hitting", "action": "Aim: left / right, up deep, down short"},
-    {"input": "START", "action": "Pause"},
+    {"input": "A + B", "action": "Pause"},
     {"input": "B (paused)", "action": "Quit to the title"},
     {"input": "PLAY ONLINE", "action": "Singles or doubles with up to four consoles, through the PRG32 Multiplayer Server"}
   ],

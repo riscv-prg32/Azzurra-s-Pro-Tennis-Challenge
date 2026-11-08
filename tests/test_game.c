@@ -130,16 +130,30 @@ int main(int argc, char **argv) {
         if (t == 200) shot("rally");
         if ((t % 97) == 0) same_as_repaint("play");
         if (t == 400) {
-            tap(PRG32_BTN_START);
+            /* START is the joystick's centre click: it never pauses. */
+            for (int k = 0; k < 3; ++k) {
+                tap(PRG32_BTN_START);
+                CHECK(v.app == APP_PLAY, "START does not pause (app %d)", v.app);
+            }
+            /* A + B pauses, and the chord strikes nothing. */
+            uint8_t rally = v.game.rally;
+            frame(PRG32_BTN_A | PRG32_BTN_B);
+            CHECK(v.app == APP_PAUSE, "A + B pauses");
+            frames(3, PRG32_BTN_A | PRG32_BTN_B);
             frames(3, 0);
-            CHECK(v.app == APP_PAUSE, "START pauses");
+            CHECK(v.app == APP_PAUSE && v.game.rally == rally, "the pause holds");
             shot("pause");
             tap(PRG32_BTN_START);
-            CHECK(v.app == APP_PLAY, "START resumes");
-            tap(PRG32_BTN_START);
-            frames(2, 0);
-            tap(PRG32_BTN_START);
-            CHECK(v.app == APP_PLAY, "START pauses and resumes again");
+            CHECK(v.app == APP_PAUSE, "START does not resume");
+            tap(PRG32_BTN_A);
+            CHECK(v.app == APP_PLAY, "A resumes");
+            /* B first, then A while B is held: a chord too. */
+            frame(PRG32_BTN_B);
+            frame(PRG32_BTN_A | PRG32_BTN_B);
+            CHECK(v.app == APP_PAUSE, "B, then A with B held, pauses");
+            frame(0);
+            tap(PRG32_BTN_A | PRG32_BTN_B);
+            CHECK(v.app == APP_PLAY, "A + B in the pause resumes, not quits");
         }
     }
     printf("play: %d points, %d shots, app %d, games %d-%d\n", points, shots_taken, v.app, v.game.games[0], v.game.games[1]);
@@ -181,13 +195,13 @@ int main(int argc, char **argv) {
     printf("singles: %d points, app %d, games %d-%d\n", singles_points, v.app, v.game.games[0], v.game.games[1]);
     CHECK(v.app == APP_ROUNDWON || v.app == APP_GAMEOVER, "the singles match ends (app %d)", v.app);
 
-    /* The pause quits to the title with B (SELECT is START on PRG32). */
+    /* The pause quits to the title with B (SELECT is START on PRG32, and START never pauses). */
     v.menu = MENU_EXHIBITION;
     title_screen();
     frames(3, 0);
     tap(PRG32_BTN_A);
     frames(120, 0);
-    tap(PRG32_BTN_START);
+    tap(PRG32_BTN_A | PRG32_BTN_B);
     CHECK(v.app == APP_PAUSE, "paused again");
     tap(PRG32_BTN_B);
     frames(2, 0);

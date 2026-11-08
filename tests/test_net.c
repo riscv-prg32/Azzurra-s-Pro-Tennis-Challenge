@@ -50,6 +50,7 @@ typedef struct {
 } console_t;
 
 static console_t con[MAXC];
+static int prompt_test, prompt_frame, prompt_done;   /* the leave prompt, on console 0 */
 static int ncon;
 static uint16_t snapshot[HOST_W * HOST_H];
 
@@ -186,12 +187,33 @@ static void console_frame(int k) {
         int s = my_slot();
         if (s >= 0) in = autoplayer(s);
     }
+    /* The leave prompt: START does nothing, A + B opens it, A closes it, and the
+     * console sends no A or B from the chord until both are released. */
+    int prompting = prompt_test && k == 0 && !prompt_done && v.app == APP_PLAY && v.net.lock.tick > 300;
+    if (prompting) {
+        static const uint32_t script[] = {PRG32_BTN_START, 0, PRG32_BTN_A | PRG32_BTN_B, PRG32_BTN_A | PRG32_BTN_B,
+                                          PRG32_BTN_A | PRG32_BTN_B, 0, 0, PRG32_BTN_A, 0};
+        in = script[prompt_frame];
+    }
     host_input = in;
     c->input = in;
     uint32_t before = v.net.lock.tick;
     int was_match = v.net.in_match && !v.net.finished;
     azzurra_update();
     azzurra_draw();
+    if (prompting) {
+        int f = prompt_frame++;
+        uint32_t newest = net_lock_held(&v.net.lock, v.net.lock.me, v.net.lock.known[v.net.lock.me] - 1);
+        if (f <= 1) CHECK(!v.net.prompt && v.app == APP_PLAY, "online: START opens nothing (frame %d)", f);
+        if (f >= 2 && f <= 6) CHECK(v.net.prompt && v.net.mute_ab, "online: A + B opens the prompt (frame %d)", f);
+        if (f == 3) shot("online_prompt");
+        if (f == 7) CHECK(!v.net.prompt && v.net.mute_ab, "online: A plays on, still muted while held");
+        if (f >= 2 && f <= 7) CHECK(!(newest & (AZ_A | AZ_B)), "online: the prompt's keys are not sent (frame %d)", f);
+        if (f == 8) {
+            CHECK(!v.net.prompt && !v.net.mute_ab && v.app == APP_PLAY, "online: released, play on");
+            prompt_done = 1;
+        }
+    }
     if (v.app == APP_LOBBY && !v.net.my_id && c->unadmitted_games < 0) c->unadmitted_games = shown_games();
     if (was_match) {
         /* The game after T ticks, whichever frame ran them. */
@@ -222,10 +244,13 @@ typedef struct {
     uint32_t period[MAXC];
     uint32_t lat_min, lat_max;
     int drop;                  /* console that vanishes in the middle (-1 none) */
+    int prompt;                /* console 0 opens and closes the leave prompt */
 } scenario_t;
 
 static void run(const scenario_t *sc) {
     printf("%s:\n", sc->name);
+    prompt_test = sc->prompt;
+    prompt_frame = prompt_done = 0;
     host_mp_reset();
     host_mp_lat_min = sc->lat_min;
     host_mp_lat_max = sc->lat_max;
@@ -314,6 +339,7 @@ static void run(const scenario_t *sc) {
            first_diff >= 0 ? " (first shown)" : "", host_mp_sent, (host_ms - 1000) / 1000.0);
     if (first_diff >= 0) printf("  first difference at tick %d\n", first_diff);
     CHECK(differ == 0, "%s: the consoles ran different matches", sc->name);
+    CHECK(!sc->prompt || prompt_done, "%s: the leave prompt was tried", sc->name);
     CHECK(sc->drop >= 0 || compared > 150, "%s: too few states compared (%d)", sc->name, compared);
     int winner = -1;
     for (int k = 0; k < ncon; ++k) {
@@ -354,13 +380,13 @@ static void run(const scenario_t *sc) {
 int main(int argc, char **argv) {
     shots_dir = argc > 1 ? argv[1] : 0;
     static const scenario_t scenarios[] = {
-        {"1 vs 1 online, two consoles at 30 fps", 2, 0, 1, {0, 1}, {33, 33}, 20, 90, -1},
-        {"1 vs 1 online, a 10 fps console, 150 ms network", 2, 0, 1, {0, 1}, {33, 100}, 40, 150, -1},
-        {"2 vs 2 online, four consoles, one at 10 fps", 4, 1, 1, {0, 1, 0, 1}, {33, 33, 100, 33}, 20, 120, -1},
-        {"2 vs 2 online, three consoles and one CPU", 3, 1, 1, {0, 1, 1, 0}, {33, 33, 33, 33}, 20, 90, -1},
-        {"2 vs 2 online, two partners against two CPUs", 2, 1, 1, {0, 0, 0, 0}, {33, 33, 33, 33}, 20, 90, -1},
-        {"2 vs 2 online, one against one with CPU partners", 2, 1, 1, {0, 1, 0, 0}, {33, 33, 33, 33}, 20, 90, -1},
-        {"1 vs 1 online, a console vanishes", 2, 0, 2, {0, 1}, {33, 33}, 20, 90, 1},
+        {"1 vs 1 online, two consoles at 30 fps", 2, 0, 1, {0, 1}, {33, 33}, 20, 90, -1, 1},
+        {"1 vs 1 online, a 10 fps console, 150 ms network", 2, 0, 1, {0, 1}, {33, 100}, 40, 150, -1, 0},
+        {"2 vs 2 online, four consoles, one at 10 fps", 4, 1, 1, {0, 1, 0, 1}, {33, 33, 100, 33}, 20, 120, -1, 0},
+        {"2 vs 2 online, three consoles and one CPU", 3, 1, 1, {0, 1, 1, 0}, {33, 33, 33, 33}, 20, 90, -1, 0},
+        {"2 vs 2 online, two partners against two CPUs", 2, 1, 1, {0, 0, 0, 0}, {33, 33, 33, 33}, 20, 90, -1, 0},
+        {"2 vs 2 online, one against one with CPU partners", 2, 1, 1, {0, 1, 0, 0}, {33, 33, 33, 33}, 20, 90, -1, 0},
+        {"1 vs 1 online, a console vanishes", 2, 0, 2, {0, 1}, {33, 33}, 20, 90, 1, 0},
     };
     for (unsigned i = 0; i < sizeof scenarios / sizeof scenarios[0]; ++i) run(&scenarios[i]);
 

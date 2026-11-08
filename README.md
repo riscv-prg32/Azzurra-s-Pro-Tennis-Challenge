@@ -57,7 +57,8 @@ is in [`assets/store/preview.mp4`](assets/store/preview.mp4).
 | A | Drive; volley before the bounce; smash a high ball. Serving: toss, then A again at the top |
 | B | Lob |
 | D-pad while hitting | Aim: left/right across the court, up deep, down short |
-| START | Pause; B in the pause quits to the title. Online there is no pause: B leaves the match |
+| A + B together | Pause: A resumes, B quits to the title. Online there is no pause: a prompt where B leaves the match and A plays on |
+| START | Nothing during a match (it is the joystick's centre click) |
 
 The title menu offers:
 

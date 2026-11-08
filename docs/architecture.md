@@ -44,7 +44,7 @@ state once per call.
 ```
 TITLE ──A──▶ INTRO ──3.3 s / A──▶ PLAY ──match over──▶ ROUNDWON ──A──▶ INTRO (next city)
   │  ▲                               │  ▲                 │
-  │  └────────────── B ────── PAUSE ◀┘  └ START           └─ round 14 ─▶ CHAMPION ──A──▶ TITLE
+  │  └────────────── B ────── PAUSE ◀┘  └ A (A+B pauses)  └─ round 14 ─▶ CHAMPION ──A──▶ TITLE
   │                                                     GAMEOVER ──A──▶ INTRO (same city)
   ├─15 s idle──▶ DEMO ──any key──▶ TITLE                    └──B──▶ TITLE
   └─PLAY ONLINE──▶ LOBBY ──all ready, 3 s──▶ INTRO ▶ PLAY (online) ──▶ result ──A──▶ LOBBY

@@ -40,6 +40,8 @@ Challenge, a PRG32 portable cartridge for the 128 KiB profile.
 
 - **`PRG32_BTN_SELECT == PRG32_BTN_START`.** Never give SELECT its own
   meaning; the pause uses B to quit.
+- **START never pauses.** It is the joystick's centre click. A + B together
+  pauses (online: opens the leave prompt); A resumes, B quits.
 - **A + B + DOWN restarts the firmware.** Scripts that press random keys
   must not hold B with a direction (`scripts/qemu_netplay.py` presses no B).
 

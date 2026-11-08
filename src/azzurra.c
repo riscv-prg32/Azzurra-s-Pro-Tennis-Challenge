@@ -131,7 +131,7 @@ static struct {
     az_game_t game;
     uint8_t conf_x[24], conf_y[24], conf_k[24];
     struct {
-        uint8_t joined, in_match, finished, row, countdown_on, waiting, prompt;
+        uint8_t joined, in_match, finished, row, countdown_on, waiting, prompt, mute_ab;
         uint16_t countdown, start_wait;
         uint32_t my_id;
         net_lobby_t mine, host;
@@ -805,6 +805,7 @@ static void intro_screen(void) {
 static void play_screen(void) {
     set_app(APP_PLAY);
     v.net.prompt = 0;
+    v.net.mute_ab = 0;
     v.net.waiting = 0;
     for (int cy = 2; cy < TEXT_ROWS; ++cy) text_clear_line(cy);
     hud_update();
@@ -956,6 +957,14 @@ static uint32_t to_core(uint32_t b) {
 
 #define ANY_BUTTON (PRG32_BTN_A | PRG32_BTN_B | PRG32_BTN_START)
 
+/* The pause key in a match is A + B together: both held, one of them new. START is the
+ * joystick's centre click, which a player presses by accident while running, so it never
+ * pauses. (A + B + DOWN restarts the firmware: the pause asks for no direction.) */
+#define AB_BUTTONS (PRG32_BTN_A | PRG32_BTN_B)
+static int ab_chord(uint32_t held, uint32_t fresh, uint32_t a, uint32_t b) {
+    return (held & (a | b)) == (a | b) && (fresh & (a | b));
+}
+
 static void net_enter(void);
 
 static void menu_input(uint32_t pressed) {
@@ -1103,6 +1112,7 @@ static void net_begin_match(const net_lobby_t *cfg, const uint32_t *ids, int n) 
     v.net.in_match = 1;
     v.net.finished = 0;
     v.net.prompt = 0;
+    v.net.mute_ab = 0;
     v.net.waiting = 0;
     v.net.last_advance_ms = v.net.start_ms = prg32_ticks_ms();
     v.online = 1;
@@ -1376,22 +1386,33 @@ static void update_step(const uint32_t held[4], const uint32_t pressed[4], uint3
 static void net_match_frame(uint32_t buttons, uint32_t fresh) {
     uint32_t now = prg32_ticks_ms();
     net_lock_t *lk = &v.net.lock;
-    /* Leaving: START asks, B confirms (SELECT is START on PRG32). The match does not
-     * stop for anyone. */
-    if (fresh & PRG32_BTN_START) {
+    /* Leaving: A + B asks, B confirms, A plays on. START does nothing here. The match
+     * does not stop for anyone. From the chord until A and B are both released, this
+     * console sends neither, so the prompt's keys never strike the ball. */
+    if (ab_chord(buttons, fresh, PRG32_BTN_A, PRG32_BTN_B)) {
         v.net.prompt = (uint8_t)!v.net.prompt;
+        v.net.mute_ab = 1;
         if (v.net.prompt) {
             text_panel(11, 13, 6, 34);
             text_center(11, "ONLINE: NO PAUSE", C_GOLD);
             text_center(12, "B: LEAVE THE MATCH", C_CREAM);
-            text_center(13, "START: PLAY ON", C_CREAM);
+            text_center(13, "A: PLAY ON", C_CREAM);
         } else {
             for (int cy = 11; cy <= 13; ++cy) text_clear_line(cy);
         }
-    }
-    if (v.net.prompt && (fresh & PRG32_BTN_B)) {
+    } else if (v.net.prompt && (fresh & PRG32_BTN_A)) {
+        v.net.prompt = 0;
+        for (int cy = 11; cy <= 13; ++cy) text_clear_line(cy);
+    } else if (v.net.prompt && (fresh & PRG32_BTN_B)) {
         title_screen();
         return;
+    }
+    if (v.net.mute_ab) {
+        if (!v.net.prompt && !(buttons & AB_BUTTONS)) v.net.mute_ab = 0;
+        else {
+            buttons &= ~AB_BUTTONS;
+            v.pending_pressed &= ~AB_BUTTONS;
+        }
     }
     /* The other consoles' inputs. */
     uint32_t id = prg32_multiplayer_local_player_id();
@@ -1506,11 +1527,12 @@ static void update_step(const uint32_t held[4], const uint32_t pressed[4], uint3
         if (v.app_tick > NET_INTRO_TICKS || (!v.online && (ui_pressed & ANY_BUTTON))) play_screen();
         break;
     case APP_PLAY:
-        if (!v.online && (ui_pressed & PRG32_BTN_START)) {
+        /* A + B pauses; that tick is not played, so the chord strikes nothing. */
+        if (!v.online && ab_chord(held[0], pressed[0], AZ_A, AZ_B)) {
             set_app(APP_PAUSE);
             text_panel(11, 13, 6, 34);
             text_center(11, "PAUSED", C_GOLD);
-            text_center(12, "START: RESUME", C_CREAM);
+            text_center(12, "A: RESUME", C_CREAM);
             text_center(13, "B: QUIT TO TITLE", C_CREAM);
             break;
         }
@@ -1533,10 +1555,11 @@ static void update_step(const uint32_t held[4], const uint32_t pressed[4], uint3
         hud_update();
         break;
     case APP_PAUSE:
-        if (ui_pressed & PRG32_BTN_START) {
+        /* A first: pressing A + B again resumes rather than quits. START does nothing. */
+        if (ui_pressed & PRG32_BTN_A) {
             set_app(APP_PLAY);
             for (int cy = 11; cy <= 13; ++cy) text_clear_line(cy);
-        } else if (ui_pressed & PRG32_BTN_B) {     /* PRG32_BTN_SELECT is START itself */
+        } else if (ui_pressed & PRG32_BTN_B) {
             title_screen();
         }
         break;
